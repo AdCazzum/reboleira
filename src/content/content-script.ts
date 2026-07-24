@@ -8,7 +8,7 @@ let adaptedRoot: HTMLElement | null = null;
 const originals: HTMLElement[] = [];
 
 async function activePersona(): Promise<PersonaKey> {
-  const { persona } = await chrome.storage.local.get('persona');
+  const { persona } = await chrome.storage.local.get('persona') as { persona?: PersonaKey };
   return persona ?? 'personaA';
 }
 

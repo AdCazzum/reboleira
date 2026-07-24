@@ -40,5 +40,5 @@
       "sourceRefs": ["block-3"]
     }
   ],
-  "hidden": ["block-0", "block-5", "block-9", "block-10", "block-12", "block-13", "block-14", "block-15", "block-16", "block-17", "block-18", "block-19", "block-20"]
+  "hidden": ["block-0", "block-9", "block-10", "block-12", "block-13", "block-14", "block-15", "block-16", "block-17", "block-18", "block-19", "block-20"]
 }

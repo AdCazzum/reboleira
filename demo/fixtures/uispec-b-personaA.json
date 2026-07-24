@@ -10,7 +10,7 @@
       "content": [
         { "type": "text", "text": "NimbusKey Pro è una chiavetta di sicurezza. Costa 149 dollari ed è disponibile subito." }
       ],
-      "sourceRefs": ["block-1", "block-2", "block-4"]
+      "sourceRefs": ["block-1", "block-2", "block-4", "block-5"]
     },
     {
       "role": "primary",

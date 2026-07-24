@@ -1,0 +1,44 @@
+{
+  "theme": { "fontScale": 1.4, "contrast": "normal", "font": "dyslexic", "lineSpacing": 2, "colorMode": "light", "density": "comfortable" },
+  "language": "it",
+  "readingLevel": "simple",
+  "sections": [
+    {
+      "role": "summary",
+      "priority": 1,
+      "heading": "In breve",
+      "content": [
+        { "type": "text", "text": "NimbusKey Pro è una chiavetta di sicurezza. Costa 149 dollari ed è disponibile subito." }
+      ],
+      "sourceRefs": ["block-1", "block-2", "block-4"]
+    },
+    {
+      "role": "primary",
+      "priority": 2,
+      "heading": "Cos'è e a cosa serve",
+      "content": [
+        { "type": "text", "text": "Questa chiavetta protegge i tuoi account online. La colleghi al computer o la avvicini al telefono per accedere in modo sicuro, senza password complicate." },
+        { "type": "list", "items": ["Si collega con USB-C", "Funziona anche senza fili (NFC)", "Resiste all'acqua e alla polvere"] }
+      ],
+      "sourceRefs": ["block-7", "block-8", "block-11"]
+    },
+    {
+      "role": "actions",
+      "priority": 3,
+      "content": [
+        { "type": "action", "refId": "block-6", "label": "Aggiungi al carrello" }
+      ],
+      "sourceRefs": ["block-6"]
+    },
+    {
+      "role": "aside",
+      "priority": 4,
+      "heading": "Foto del prodotto",
+      "content": [
+        { "type": "image", "refId": "block-3" }
+      ],
+      "sourceRefs": ["block-3"]
+    }
+  ],
+  "hidden": ["block-0", "block-5", "block-9", "block-10", "block-12", "block-13", "block-14", "block-15", "block-16", "block-17", "block-18", "block-19", "block-20"]
+}

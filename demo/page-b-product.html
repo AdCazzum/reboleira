@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NimbusKey Pro — Hardware Security Key | Fictional Store</title>
+<style>
+  body { font-family: Helvetica, Arial, sans-serif; margin: 0; color: #1a1a1a; }
+  nav.site-nav { background: #0b1d3a; padding: 12px 16px; }
+  nav.site-nav a { color: #fff; margin-right: 18px; text-decoration: none; font-weight: bold; }
+  header { padding: 24px 16px 8px; max-width: 1100px; margin: 0 auto; }
+  header h1 { margin: 0 0 4px; }
+  .tagline { color: #555; }
+  .layout { display: flex; gap: 32px; padding: 16px; max-width: 1100px; margin: 0 auto; align-items: flex-start; }
+  .gallery { flex: 1; }
+  .gallery img { max-width: 100%; border: 1px solid #ddd; border-radius: 6px; }
+  .buy-box { flex: 1; background: #f7f7f7; padding: 20px; border-radius: 6px; }
+  .buy-box .price { font-size: 1.8rem; font-weight: bold; margin: 0 0 4px; }
+  .buy-box .stock { color: #2e7d32; margin: 0 0 16px; }
+  button { background: #0b1d3a; color: #fff; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-size: 1rem; }
+  section { max-width: 1100px; margin: 0 auto; padding: 16px; }
+  table { border-collapse: collapse; width: 100%; margin-top: 12px; }
+  table th, table td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; font-size: 0.9rem; }
+  table th { background: #f0f0f0; }
+  aside.sidebar { max-width: 1100px; margin: 0 auto; padding: 16px; background: #f5f5f5; }
+  aside.sidebar a { display: inline-block; margin-right: 16px; color: #0b1d3a; }
+  footer { background: #0b1d3a; color: #ccc; padding: 24px 16px; margin-top: 32px; }
+  footer nav.footer-nav a { color: #ccc; margin-right: 16px; }
+</style>
+</head>
+<body>
+  <nav class="site-nav">
+    <a href="/">Home</a>
+    <a href="/products">Products</a>
+    <a href="/docs">Documentation</a>
+    <a href="/support">Support</a>
+  </nav>
+
+  <header>
+    <h1>NimbusKey Pro</h1>
+    <p class="tagline">FIDO2 / WebAuthn hardware security key with USB-C and NFC</p>
+  </header>
+
+  <div class="layout">
+    <div class="gallery">
+      <img src="/img/nimbuskey-pro-front.jpg" alt="NimbusKey Pro hardware security key, front view">
+    </div>
+    <div class="buy-box">
+      <p class="price">$149.00</p>
+      <p class="stock">In stock — ships within 2 business days</p>
+      <button>Add to cart</button>
+    </div>
+  </div>
+
+  <section class="description">
+    <h2>Overview</h2>
+    <p>NimbusKey Pro is a hardware authentication device supporting FIDO2, WebAuthn, U2F, and OTP protocols, designed for engineers and security teams who need phishing-resistant multi-factor authentication across cloud consoles, source control, and VPN endpoints. The device stores private keys in a secure element and never exposes them to the host operating system.</p>
+    <p>Unlike software-based authenticators, NimbusKey Pro requires physical presence for every authentication event, which mitigates remote credential theft even in the event of a fully compromised host machine. The device is rated IP68 for dust and water resistance and is built to withstand daily carry on a keyring.</p>
+  </section>
+
+  <section class="specs">
+    <h2>Technical specifications</h2>
+    <ul>
+      <li>Protocols: FIDO2, WebAuthn, U2F, TOTP/HOTP</li>
+      <li>Connectivity: USB-C and NFC (ISO/IEC 14443)</li>
+      <li>Secure element: EAL6+ certified</li>
+      <li>Durability: IP68, crush-resistant up to 2kN</li>
+    </ul>
+    <table>
+      <thead>
+        <tr><th>Attribute</th><th>Value</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Dimensions</td><td>45 x 18 x 4 mm</td></tr>
+        <tr><td>Weight</td><td>3.4 g</td></tr>
+        <tr><td>Operating temperature</td><td>-20°C to 60°C</td></tr>
+        <tr><td>Warranty</td><td>3 years</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="docs">
+    <h2>Documentation</h2>
+    <p>New to hardware security keys? The quick-start guide walks through registering NimbusKey Pro as a second factor on the most common identity providers, and covers backup-key provisioning so you are never locked out of an account.</p>
+    <ol>
+      <li>Insert NimbusKey Pro into a free USB-C port or tap it against an NFC-enabled device</li>
+      <li>Register the key in your identity provider's security settings</li>
+      <li>Provision a second NimbusKey Pro as a backup and store it in a separate location</li>
+    </ol>
+    <a href="/docs/nimbuskey-pro/full">Read the full documentation</a>
+  </section>
+
+  <aside class="sidebar">
+    <h3>Related products</h3>
+    <a href="/products/nimbuskey-nano">NimbusKey Nano</a>
+    <a href="/products/nimbuskey-case">NimbusKey Carrying Case</a>
+  </aside>
+
+  <footer>
+    <nav class="footer-nav">
+      <a href="/about">About</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/support">Support</a>
+    </nav>
+    <p>© 2026 Fictional Store Inc. — Demo product page for illustrative purposes only.</p>
+  </footer>
+</body>
+</html>

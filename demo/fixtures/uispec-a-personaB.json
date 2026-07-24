@@ -1,0 +1,64 @@
+{
+  "theme": { "fontScale": 1.15, "contrast": "high", "font": "system", "lineSpacing": 1.3, "colorMode": "light", "density": "compact" },
+  "language": "en",
+  "readingLevel": "expert",
+  "sections": [
+    {
+      "role": "primary",
+      "priority": 1,
+      "heading": "Genoa Port Container Throughput Doubles in H1 2026",
+      "content": [
+        { "type": "text", "text": "The Port of Genoa reported a 100% year-over-year increase in container throughput for H1 2026, driven by the early completion of the Sech terminal expansion and new carrier agreements with Asian shipping lines." },
+        { "type": "text", "text": "Port Authority data shows 1.4M TEU handled in H1 2026 versus 700K in H1 2025, with a full-year target of 2.8M TEU that would place Genoa among the top five Mediterranean ports by cargo volume." }
+      ],
+      "sourceRefs": ["block-2", "block-5", "block-6"]
+    },
+    {
+      "role": "content",
+      "priority": 2,
+      "heading": "Infrastructure Investment",
+      "content": [
+        { "type": "text", "text": "Over €600M has been invested since 2023 in berth crane automation, expanded internal rail sidings, and digitized customs processing, cutting average vessel dwell time from 36 to 19 hours." },
+        { "type": "list", "items": ["1.4M TEU handled H1 2026", "€600M invested in infrastructure since 2023", "Vessel dwell time reduced from 36h to 19h"] }
+      ],
+      "sourceRefs": ["block-7", "block-8", "block-9"]
+    },
+    {
+      "role": "content",
+      "priority": 3,
+      "heading": "Labor and Environmental Concerns",
+      "content": [
+        { "type": "text", "text": "Dockworker unions note that volume growth has not translated proportionally into new hiring, and environmental groups have flagged air-quality impacts from increased maritime traffic in the gulf." }
+      ],
+      "sourceRefs": ["block-10"]
+    },
+    {
+      "role": "content",
+      "priority": 4,
+      "heading": "Next Steps",
+      "content": [
+        { "type": "text", "text": "The City of Genoa has convened a roundtable with the Port Authority, unions, and trade associations next week to negotiate a phased hiring plan and mitigation measures; Livorno and Trieste are reportedly evaluating the same model." }
+      ],
+      "sourceRefs": ["block-11", "block-12"]
+    },
+    {
+      "role": "actions",
+      "priority": 5,
+      "content": [
+        { "type": "action", "refId": "block-13", "label": "Share article" }
+      ],
+      "sourceRefs": ["block-13"]
+    },
+    {
+      "role": "aside",
+      "priority": 6,
+      "heading": "Related coverage",
+      "content": [
+        { "type": "image", "refId": "block-4" },
+        { "type": "list", "items": ["Trieste plans new terminal for 2027", "Port unions threaten national strike", "Genoa gulf air quality under scrutiny"] }
+      ],
+      "sourceRefs": ["block-4", "block-15", "block-16", "block-17"]
+    }
+  ],
+  "hidden": ["block-0", "block-1", "block-3", "block-14", "block-18", "block-19"]
+}

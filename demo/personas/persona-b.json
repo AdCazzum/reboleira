@@ -1,0 +1,3 @@
+{ "version": 1, "language": "en", "readingLevel": "expert",
+  "accessibility": { "dyslexiaFriendly": false, "highContrast": true, "largeText": true, "reduceClutter": false },
+  "expertiseDomains": ["finance","crypto"], "tone": "technical" }

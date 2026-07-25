@@ -18,7 +18,8 @@
 //
 // ---------------------------------------------------------------------------
 // World ID step (Step 2): REAL World ID 4.0 verification - idkit v4.2.1,
-// IDKitRequestWidget + a client-signed rp_context (demo-only - see below)
+// IDKitRequestWidget + an rp_context signed by a LOCAL NODE SERVER
+// (scripts/onboarding-server.mjs), fetched same-origin over POST /rp-context
 // ---------------------------------------------------------------------------
 // History (see git log / earlier revisions of this comment for the full
 // blow-by-blow): the World Developer Portal now provisions World ID 4.0
@@ -26,29 +27,43 @@
 // release with the simple client-only `IDKitWidget` render-prop API) because
 // the installed v4.2.1 has NO `IDKitWidget` export and its widget/hook API
 // (`IDKitRequestWidget`/`useIDKitRequest`) requires a mandatory
-// `rp_context: { rp_id, nonce, created_at, expires_at, signature }` whose
-// `signature` the docs (and node_modules/@worldcoin/idkit-core/README.md,
-// verbatim: "RP signing is intentionally not exposed on the browser global;
-// generate RP signatures on your backend") say must come from a backend -
-// which ENSight does not have.
+// `rp_context: { rp_id, nonce, created_at, expires_at, signature }`. The user
+// then created a real World ID 4.0 app + on-chain-registered RP and decided
+// to do REAL v4 verification, so @worldcoin/idkit is back to 4.2.1
+// (package.json).
 //
-// The user then created a real World ID 4.0 app + on-chain-registered RP in
-// the Developer Portal and decided to do REAL v4 verification instead of the
-// v2 widget or a manual-paste fallback. @worldcoin/idkit is back to 4.2.1
-// (package.json). For this backend-less localhost demo, rp_context is
-// signed CLIENT-SIDE with the RP's private signing key, using the pure-JS
-// (no WASM) `signRequest()` from the `@worldcoin/idkit/signing` subpath
-// (confirmed: `@worldcoin/idkit-core/signing` -> `@worldcoin/idkit-server`,
-// "Signs an RP request using pure JS (no WASM required) ... Ethereum EIP-191
-// message signing").
+// A next pass tried signing rp_context CLIENT-SIDE (in this file) via
+// `signRequest()` from `@worldcoin/idkit/signing` - this was WRONG and threw
+// at runtime: signRequest has a hard guard
+// (node_modules/@worldcoin/idkit-server/dist/index.js, isServerEnvironment())
+// that throws "signRequest can only be used in Node.js environments ..." the
+// instant it detects it is not running under Node/Deno/Bun. This is
+// deliberate (it exists specifically to stop exactly what that pass did: a
+// signing key living in a browser bundle), not a bug and not something a
+// build/bundler trick can route around. The World Developer Portal's hosted
+// proof-context endpoint was also probed directly (POST, several body
+// shapes) and only returns app metadata (app_id, rp_id, name, logos,
+// action) - not a signed context - so it is not a hosted signer either.
 //
-//   DEMO-ONLY, NOT A PRODUCTION PATTERN: signing rp_context in the browser
-//   means the RP signing key ends up inlined into demo/onboarding.js by
-//   scripts/build-onboarding.mjs (same import.meta.env mechanism as every
-//   other VITE_ var - see .env.example). This is acceptable ONLY because the
-//   World ID app/RP behind this demo is a disposable, throwaway one whose
-//   key gets rotated/revoked after use. A real product signs rp_context on a
-//   backend server that holds the key, never in a client bundle.
+// The fix: scripts/onboarding-server.mjs is a tiny local Node http server
+// that serves this demo/ directory AND exposes POST /rp-context, which runs
+// the REAL signRequest() (happily, since it is actually Node) and returns
+// the signed context as JSON. This file just fetches it same-origin - see
+// buildRpContext() below. The RP signing key never enters the browser bundle
+// at all now: it is read by scripts/onboarding-server.mjs from
+// WORLD_RP_SIGNING_KEY (env or a repo-root .env - deliberately NOT
+// VITE_-prefixed, see .env.example), and demo/onboarding.tsx never
+// references it. `npx grep`-style verification of the built
+// demo/onboarding.js for any trace of the key/env name is part of this
+// task's verification step - see task-16-partB-report.md.
+//
+//   DEMO-ONLY CAVEAT (still applies, just relocated): the World ID app/RP
+//   behind this demo is a disposable, throwaway one whose key gets
+//   rotated/revoked after use. A real product still signs rp_context on a
+//   backend server - this local dev server IS that backend, just running on
+//   localhost instead of a deployed host, which is appropriate for a
+//   developer-only manual E2E harness but would need to move to a real
+//   deployed service (with real access control) for anything user-facing.
 //
 // Verified against the ACTUALLY INSTALLED types (not assumed from docs),
 // since the installed `IDKitResult` (`@worldcoin/idkit`, re-exported from
@@ -67,12 +82,11 @@
 // without an unsafe cast, while staying honest about the full union type
 // the SDK declares.
 //
-// `signRequest({ signingKeyHex, action? }) -> { sig, nonce, createdAt,
-// expiresAt }` (node_modules/@worldcoin/idkit-server/dist/index.d.ts) -
-// mapped 1:1 onto RpContext's snake_case fields below. The signed `action`
-// MUST exactly match the widget's own `action` prop (the RP signature
-// covers the action per idkit-server's `computeRpSignatureMessage` message
-// format), so both read from the same `CONFIG.worldAction`.
+// The signed `action` MUST exactly match the widget's own `action` prop (the
+// RP signature covers the action per idkit-server's
+// `computeRpSignatureMessage` message format) - buildRpContext() sends
+// CONFIG.worldAction in the POST body and the widget below reads the same
+// CONFIG.worldAction for its `action` prop.
 //
 // idkit v4 is a React package (uses WASM internally via idkit-core) and this
 // repo only installs preact - the react->preact/compat alias in
@@ -88,7 +102,6 @@ import { ethers } from 'ethers';
 import type { BrowserProvider, JsonRpcSigner } from 'ethers';
 import { IDKitRequestWidget, orbLegacy, IDKitErrorCodes } from '@worldcoin/idkit';
 import type { IDKitResult, IDKitDebugReport, RpContext } from '@worldcoin/idkit';
-import { signRequest } from '@worldcoin/idkit/signing';
 import { CONFIG } from '../src/config';
 import { SIGN_MESSAGE, deriveKey } from '../src/core/crypto';
 import { attestationFromProof } from '../src/services/world-id';
@@ -259,24 +272,32 @@ function App() {
   }
 
   // ---- Step 2: Verify human (World ID 4.0, IDKitRequestWidget - see header comment) ----
-  // Signs a fresh rp_context client-side (DEMO-ONLY, see header comment) and
-  // opens the widget. Re-signed on every click so the nonce/TTL are always
-  // fresh, in case a previous attempt's context expired.
-  function openWorldWidget(): void {
+  // Fetches a freshly-signed rp_context from the local Node signing server
+  // (scripts/onboarding-server.mjs's POST /rp-context - see header comment
+  // for why signing cannot happen in this browser bundle) and opens the
+  // widget. Re-fetched on every click so the nonce/TTL are always fresh, in
+  // case a previous attempt's context expired.
+  async function openWorldWidget(): Promise<void> {
     setError(2, null);
+    setBusy(true);
     try {
-      const signingKeyHex = import.meta.env.VITE_WORLD_RP_SIGNING_KEY as string;
-      if (!signingKeyHex) throw new Error('VITE_WORLD_RP_SIGNING_KEY not set in .env (demo-only RP signing key - see .env.example)');
-      if (!CONFIG.worldRpId) throw new Error('VITE_WORLD_RP_ID not set in .env');
-      appendLog('> signRequest({ signingKeyHex, action }) [client-side, demo-only]');
-      const { sig, nonce, createdAt, expiresAt } = signRequest({
-        signingKeyHex,
-        action: CONFIG.worldAction
+      appendLog('> POST /rp-context { action } [signed by scripts/onboarding-server.mjs, Node-side]');
+      const res = await fetch('/rp-context', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: CONFIG.worldAction })
       });
-      setRpContext({ rp_id: CONFIG.worldRpId, nonce, created_at: createdAt, expires_at: expiresAt, signature: sig });
+      if (!res.ok) {
+        throw new Error(`rp-context signer HTTP ${res.status} - is scripts/onboarding-server.mjs running? (node scripts/onboarding-server.mjs)`);
+      }
+      const context = (await res.json()) as RpContext;
+      appendLog(`rp_context received (rp_id=${context.rp_id}, nonce=${context.nonce.slice(0, 10)}...)`);
+      setRpContext(context);
       setWorldOpen(true);
     } catch (err) {
       setError(2, logError('world sign', err));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -439,10 +460,11 @@ function App() {
           <h2>2. Verify human</h2>
           <p style={{ fontSize: 13, color: '#555' }}>
             World ID 4.0 staging (simulator) - <code>@worldcoin/idkit@4.2.1</code>,{' '}
-            <code>IDKitRequestWidget</code>. rp_context is signed client-side with a demo-only RP key (see the
-            header comment in this file and <code>.env.example</code>) - never do this in production. Opens the
-            real widget; use the World App simulator (Developer Portal, staging app) to complete verification
-            without a physical Orb.
+            <code>IDKitRequestWidget</code>. rp_context is fetched from{' '}
+            <code>POST /rp-context</code>, signed by the local dev server (
+            <code>node scripts/onboarding-server.mjs</code> - must be running; see the header comment in this
+            file for why signing cannot happen in this browser bundle). Opens the real widget; use the World App
+            simulator (Developer Portal, staging app) to complete verification without a physical Orb.
           </p>
           <button onClick={openWorldWidget} disabled={busy || worldOpen}>
             Verify with World ID

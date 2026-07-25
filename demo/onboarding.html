@@ -26,10 +26,20 @@
 <p>
   Serve this directory over <code>http://localhost</code> (not
   <code>file://</code>) so MetaMask injects <code>window.ethereum</code>
-  reliably, e.g. <code>npx serve demo</code> then open
-  <code>http://localhost:3000/onboarding.html</code>. Requires a
-  <code>.env</code> filled in per <code>.env.example</code> before building
-  (see Build below) - <code>CONFIG</code> is inlined at build time.
+  reliably. Use <code>node scripts/onboarding-server.mjs</code> from the repo
+  root, then open <code>http://localhost:8080/onboarding.html</code> - a
+  generic static server (e.g. <code>npx serve demo</code>) will NOT work for
+  Step 2 (World ID): that step fetches <code>POST /rp-context</code> from the
+  same origin, which only <code>scripts/onboarding-server.mjs</code>
+  provides (it signs the request in Node, since
+  <code>@worldcoin/idkit/signing</code>'s <code>signRequest()</code> refuses
+  to run in a browser - see that script's header comment), and a generic
+  server may also serve <code>.wasm</code> with the wrong MIME type, which
+  breaks idkit's WASM module. Requires a <code>.env</code> filled in per
+  <code>.env.example</code> before building (see Build below) -
+  <code>CONFIG</code> is inlined at build time - and
+  <code>WORLD_RP_SIGNING_KEY</code>/<code>WORLD_RP_ID</code> set (env or the
+  same <code>.env</code>) before starting the server, for Step 2 specifically.
 </p>
 <div id="app"></div>
 <script type="module" src="./onboarding.js"></script>

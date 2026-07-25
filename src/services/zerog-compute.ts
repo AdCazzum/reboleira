@@ -12,21 +12,34 @@ export interface Broker { chat(messages: { system: string; user: string }): Prom
 // `new ethers.Wallet(...)` (used by scripts/try-inference.ts) satisfies it.
 type ZeroGSigner = Wallet | JsonRpcSigner;
 
+// The SDK loader is injectable so callers can swap how the ESM module is
+// obtained. The default uses dynamic `import()`, which is required for the
+// Vite-bundled browser extension. Node-only scripts (e.g.
+// scripts/try-inference.ts) run under `tsx`, whose esbuild loader mishandles
+// this SDK's ESM chunk; they inject a `createRequire`-based loader instead.
+type SdkModule = typeof import('@0gfoundation/0g-compute-ts-sdk');
+export type ZeroGSdkLoader = () => Promise<SdkModule>;
+const defaultSdkLoader: ZeroGSdkLoader = () => import('@0gfoundation/0g-compute-ts-sdk');
+
 /**
  * Builds a `Broker` backed by the real 0G Compute Network SDK.
  *
- * The SDK is loaded lazily via dynamic `import()` the first time `chat()` is
- * called (and memoized after that), so requiring this module — and running
- * the existing unit tests, which only ever exercise `requestUISpec` with a
- * mock `Broker` — never pulls the SDK (and its wallet/network machinery)
- * into the process.
+ * The SDK is loaded lazily via `loadSdk` the first time `chat()` is called
+ * (and memoized after that), so requiring this module — and running the
+ * existing unit tests, which only ever exercise `requestUISpec` with a mock
+ * `Broker` — never pulls the SDK (and its wallet/network machinery) into the
+ * process. `loadSdk` defaults to dynamic `import()`.
  */
-export function createZeroGBroker(signer: ZeroGSigner, providerAddress: string): Broker {
+export function createZeroGBroker(
+  signer: ZeroGSigner,
+  providerAddress: string,
+  loadSdk: ZeroGSdkLoader = defaultSdkLoader
+): Broker {
   type SdkBroker = Awaited<ReturnType<typeof import('@0gfoundation/0g-compute-ts-sdk').createZGComputeNetworkBroker>>;
   let brokerPromise: Promise<SdkBroker> | null = null;
 
   async function initBroker(): Promise<SdkBroker> {
-    const { createZGComputeNetworkBroker } = await import('@0gfoundation/0g-compute-ts-sdk');
+    const { createZGComputeNetworkBroker } = await loadSdk();
     const sdkBroker = await createZGComputeNetworkBroker(signer);
     try {
       await sdkBroker.inference.acknowledgeProviderSigner(providerAddress);

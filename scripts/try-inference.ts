@@ -34,6 +34,16 @@ import { ethers } from 'ethers';
 import { createZeroGBroker, requestUISpec } from '../src/services/zerog-compute';
 import type { Broker } from '../src/services/zerog-compute';
 import type { ContentGraph, PersonaProfile } from '../src/core/types';
+import { createRequire } from 'node:module';
+
+// tsx v4's esbuild loader mishandles the @0gfoundation/0g-compute-ts-sdk
+// ESM chunk (fails with "does not provide an export named 'C'"), even
+// though plain Node loads it fine via both import() and require(). Use
+// createRequire to load the SDK's working CJS-resolved build when this
+// script runs under tsx; createZeroGBroker still defaults to import() for
+// the Vite-bundled browser extension.
+const requireSdk = createRequire(import.meta.url);
+const loadSdk = async () => requireSdk('@0gfoundation/0g-compute-ts-sdk');
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 const ZEROG_RPC = process.env.ZEROG_RPC ?? 'https://evmrpc-testnet.0g.ai';
@@ -53,7 +63,7 @@ async function main(): Promise<void> {
 
   if (!PROVIDER_ADDRESS) {
     console.log('[2/4] no PROVIDER_ADDRESS set — listing available inference providers...');
-    const { createZGComputeNetworkBroker } = await import('@0gfoundation/0g-compute-ts-sdk');
+    const { createZGComputeNetworkBroker } = await loadSdk();
     const sdkBroker = await createZGComputeNetworkBroker(wallet);
     const services = await sdkBroker.inference.listService();
 
@@ -96,7 +106,7 @@ async function main(): Promise<void> {
   };
 
   let lastRawReply: string | null = null;
-  const zerogBroker = createZeroGBroker(wallet, PROVIDER_ADDRESS);
+  const zerogBroker = createZeroGBroker(wallet, PROVIDER_ADDRESS, loadSdk);
   const diagnosticBroker: Broker = {
     async chat(messages) {
       const raw = await zerogBroker.chat(messages);

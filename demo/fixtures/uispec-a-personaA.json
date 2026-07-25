@@ -1,0 +1,45 @@
+{
+  "theme": { "fontScale": 1.4, "contrast": "normal", "font": "dyslexic", "lineSpacing": 2, "colorMode": "light", "density": "comfortable" },
+  "language": "it",
+  "readingLevel": "simple",
+  "sections": [
+    {
+      "role": "summary",
+      "priority": 1,
+      "heading": "In breve",
+      "content": [
+        { "type": "text", "text": "Il porto di Genova ha raddoppiato il traffico di container nel 2026. Merito dei nuovi investimenti e dei nuovi accordi con le compagnie di navigazione." }
+      ],
+      "sourceRefs": ["block-2", "block-5", "block-6"]
+    },
+    {
+      "role": "primary",
+      "priority": 2,
+      "heading": "La notizia, spiegata semplice",
+      "content": [
+        { "type": "text", "text": "Nei primi sei mesi del 2026 sono passati dal porto di Genova più di un milione di container. È il doppio rispetto all'anno scorso." },
+        { "type": "text", "text": "Il porto ha speso tanti soldi per far lavorare le navi più in fretta, così restano in porto meno tempo." },
+        { "type": "list", "items": ["1,4 milioni di container nel 2026", "600 milioni di euro investiti", "Le navi restano in porto meno tempo"] }
+      ],
+      "sourceRefs": ["block-7", "block-8", "block-9"]
+    },
+    {
+      "role": "actions",
+      "priority": 3,
+      "content": [
+        { "type": "action", "refId": "block-13", "label": "Condividi questa notizia" }
+      ],
+      "sourceRefs": ["block-13"]
+    },
+    {
+      "role": "aside",
+      "priority": 4,
+      "heading": "Immagine",
+      "content": [
+        { "type": "image", "refId": "block-4" }
+      ],
+      "sourceRefs": ["block-4"]
+    }
+  ],
+  "hidden": ["block-0", "block-1", "block-3", "block-10", "block-11", "block-12", "block-14", "block-15", "block-16", "block-17", "block-18", "block-19"]
+}

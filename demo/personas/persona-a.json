@@ -1,0 +1,3 @@
+{ "version": 1, "language": "it", "readingLevel": "simple",
+  "accessibility": { "dyslexiaFriendly": true, "highContrast": false, "largeText": true, "reduceClutter": true },
+  "expertiseDomains": [], "tone": "plain" }

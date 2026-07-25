@@ -196,11 +196,35 @@ esercita a ogni run.
 | Upload cifrato su 0G Storage | ✅ verificato live dall'utente (onboarding + `scripts/try-storage.ts`) |
 | Scrittura dei text record ENS | ✅ verificato live dall'utente (onboarding + `scripts/try-ens.ts`) |
 | Inferenza 0G Compute | ✅ verificata live via `scripts/try-inference.ts` (Node) |
-| **Download del profilo da 0G dentro l'estensione** | ⚠️ **da verificare live** — passo 4 |
-| **Inferenza 0G Compute dentro l'estensione** | ⚠️ **da verificare live** — passo 5 |
+| Download del profilo da 0G **dentro l'estensione** | ✅ verificato live dall'utente (2026-07-25) |
+| Inferenza 0G Compute **dentro l'estensione** | ✅ verificato live dall'utente (2026-07-25) |
 
-Le due righe ⚠️ sono percorsi la cui implementazione è stata corretta di recente
-(prima erano irraggiungibili nel browser: `zerog-storage.ts` scaricava via
-`node:fs`, e il bridge del MAIN world non partiva affatto perché `injected.js`
-veniva iniettato come script classico pur essendo un modulo). Il codice è a posto e
-tipizzato, ma solo un wallet con fondi può chiudere il cerchio.
+La catena è chiusa: con `.env` popolato e il ledger 0G finanziato, un toggle
+sulle pagine demo stampa entrambe le righe `LIVE` e la UI è generata dal profilo
+reale dell'utente, non da una fixture.
+
+### Cosa era rotto, per chi ci torna sopra
+
+Le due tratte "dentro l'estensione" sono rimaste irraggiungibili a lungo, e in
+un modo particolarmente insidioso: **ogni fallimento cadeva in fixture senza
+farsi notare**, quindi la demo sembrava funzionare. Cinque difetti distinti, in
+sequenza:
+
+1. `zerog-storage.ts` scaricava via `node:fs` (Vite lo sostituisce con uno stub
+   che lancia) → ora usa `Indexer.downloadToBlob()`, browser-safe.
+2. `injected.js` è un ES module ma veniva iniettato come script classico → il
+   listener del MAIN world non si registrava mai e il bridge wallet era morto.
+3. `postMessage` non fa coda: le richieste inviate prima che `injected.js`
+   avesse eseguito erano perse per sempre, senza timeout → handshake
+   `dir:'ready'` + timeout in `bridge.ts`.
+4. I SDK 0G leggono i global Node `global`, `process.browser` e `Buffer.from`
+   durante la valutazione dei moduli → sostituiti a build time in
+   `vite.config.ts`, con `Buffer` dietro un global namespacizzato per non
+   piantare marcatori Node nella pagina ospite.
+5. Il modello (7B) deriva sul vocabolario dello schema dopo le prime sezioni →
+   `src/core/uispec-normalize.ts` coerce per forma, senza mai toccare i `refId`.
+
+Da qui la regola che l'e2e ora fa rispettare: **ogni fallback dichiara in
+console di essere scattato, e perché**. Un fallback silenzioso è
+indistinguibile da un percorso live funzionante, ed è ciò che ha nascosto tutti
+e cinque i difetti.

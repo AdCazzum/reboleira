@@ -364,6 +364,11 @@ tries 0G Compute first and drops to these fixtures on *any* error.
 
 ### Pre-demo fallback checklist
 
+`npm run e2e` exercises exactly this path on every run: it builds with
+`--mode e2e`, where every live dependency points at a closed port, so the run
+only passes if the fallback holds. See [E2E.md](E2E.md) for the two-layer
+verification story (automated offline + manual live).
+
 ```bash
 npm test           # tests/demo/fixtures.test.ts validates every fixture
                    # against the graph freshly extracted from the mock page

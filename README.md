@@ -89,6 +89,7 @@ nvm use            # or: nvm install 22.20.0
 npm install
 npm test           # run the unit + integration suite (Vitest)
 npm run build      # produce the unpacked extension in dist/
+npm run e2e        # drive the built extension in a real Chromium (see docs/E2E.md)
 ```
 
 Then load it in Chrome: open `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, and select the generated `dist/` folder. Open one of the `demo/` pages and use the toggle to see the adapted interface.
@@ -126,6 +127,7 @@ Secrets live in a git-ignored `.env` (see `.env.example`); the sensitive profile
 
 ## Testing
 
-- **Unit** — content extractor, UISpec validator (rejects invented/malformed refIds), theme mapping, renderer (a generated action triggers the real DOM node).
+- **Unit** — content extractor, UISpec validator (rejects invented/malformed refIds), UISpec normalizer (reconciles a small model's vocabulary drift without ever touching refIds), theme mapping, renderer (a generated action triggers the real DOM node).
 - **Integration** — the full offline pipeline over the mock pages; every fixture is validated against the live-extracted ContentGraph.
-- **Fallback** — a pre-computed UISpec is cached for each (page, persona) so the demo never depends on live inference.
+- **End-to-end** — `npm run e2e` loads the built extension into a real Chromium and drives the service worker, content script, MAIN-world wallet bridge, toggle, both personas and the popup. Offline and deterministic: it builds with `--mode e2e` so every live path fails instantly, which also exercises the fallback on every run. The live chains (World ID, 0G, ENS) are verified by hand — see [docs/E2E.md](docs/E2E.md).
+- **Fallback** — a pre-computed UISpec is cached for each (page, persona) so the demo never depends on live inference. Which path won is logged to the page console, so a silent fallback can never masquerade as a live run.

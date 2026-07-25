@@ -2,6 +2,7 @@ import type { Wallet, JsonRpcSigner } from 'ethers';
 import type { ContentGraph, PersonaProfile, UISpec } from '../core/types';
 import { buildMessages } from '../core/prompt';
 import { assertValidUISpec } from '../core/uispec-validate';
+import { normalizeUISpec } from '../core/uispec-normalize';
 
 export interface Broker { chat(messages: { system: string; user: string }): Promise<string>; }
 
@@ -103,5 +104,15 @@ function extractJson(s: string): unknown {
 }
 export async function requestUISpec(graph: ContentGraph, profile: PersonaProfile, broker: Broker): Promise<UISpec> {
   const raw = await broker.chat(buildMessages(graph, profile));
-  return assertValidUISpec(extractJson(raw), graph);
+  try {
+    // normalizeUISpec riconcilia le derive di vocabolario del modello (7B) con lo
+    // schema; assertValidUISpec resta l'unica autorità, refId compresi.
+    return assertValidUISpec(normalizeUISpec(extractJson(raw), graph), graph);
+  } catch (err) {
+    // Senza questo, una risposta non valida è indistinguibile da un problema di
+    // rete: si vede solo il fallback alla fixture. Stampare l'output grezzo è il
+    // solo modo per capire su cosa il modello ha derivato.
+    console.warn('[ENSight] risposta del modello non valida — output grezzo:\n', raw.slice(0, 3000));
+    throw err;
+  }
 }

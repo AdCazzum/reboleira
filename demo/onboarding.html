@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ENSight - Task 16 onboarding wizard</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+  button { font-size: 1rem; padding: 0.5rem 1rem; margin-right: 0.5rem; cursor: pointer; }
+  button:disabled { cursor: not-allowed; opacity: 0.5; }
+  code { background: #eee; padding: 0.1rem 0.3rem; border-radius: 3px; }
+  input, select, textarea { font: inherit; padding: 0.3rem; }
+</style>
+</head>
+<body>
+<h1>ENSight onboarding wizard (Task 16)</h1>
+<p>
+  Dev/test-only harness - NOT part of the shipped extension. Standalone
+  Preact page that does the real end-to-end profile setup: connect wallet
+  &rarr; verify human (World ID) &rarr; fill profile &rarr; encrypt &amp;
+  upload to 0G Storage &rarr; write the pointer + attestation to ENS on
+  Sepolia. Uses the real <code>src/core/crypto.ts</code>,
+  <code>src/services/world-id.ts</code>, <code>src/services/zerog-storage.ts</code>
+  and <code>src/config.ts</code> (no copies, no mocks).
+</p>
+<p>
+  Serve this directory over <code>http://localhost</code> (not
+  <code>file://</code>) so MetaMask injects <code>window.ethereum</code>
+  reliably. Use <code>node scripts/onboarding-server.mjs</code> from the repo
+  root, then open <code>http://localhost:8080/onboarding.html</code> - a
+  generic static server (e.g. <code>npx serve demo</code>) will NOT work for
+  Step 2 (World ID): that step fetches <code>POST /rp-context</code> from the
+  same origin, which only <code>scripts/onboarding-server.mjs</code>
+  provides (it signs the request in Node, since
+  <code>@worldcoin/idkit/signing</code>'s <code>signRequest()</code> refuses
+  to run in a browser - see that script's header comment), and a generic
+  server may also serve <code>.wasm</code> with the wrong MIME type, which
+  breaks idkit's WASM module. Requires a <code>.env</code> filled in per
+  <code>.env.example</code> before building (see Build below) -
+  <code>CONFIG</code> is inlined at build time - and
+  <code>WORLD_RP_SIGNING_KEY</code>/<code>WORLD_RP_ID</code> set (env or the
+  same <code>.env</code>) before starting the server, for Step 2 specifically.
+</p>
+<div id="app"></div>
+<script type="module" src="./onboarding.js"></script>
+</body>
+</html>

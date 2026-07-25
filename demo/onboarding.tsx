@@ -365,12 +365,6 @@ function App() {
   }
 
   // ---- Step 3: Profile form ----
-  function updateProfile<K extends keyof PersonaProfile>(key: K, value: PersonaProfile[K]): void {
-    setProfile(p => ({ ...p, [key]: value }));
-  }
-  function updateAccessibility(key: keyof PersonaProfile['accessibility'], value: boolean): void {
-    setProfile(p => ({ ...p, accessibility: { ...p.accessibility, [key]: value } }));
-  }
   function handleProfileNext(e: Event): void {
     e.preventDefault();
     setError(3, null);

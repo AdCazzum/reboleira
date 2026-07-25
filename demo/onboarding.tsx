@@ -17,55 +17,55 @@
 // script that does not exist on this plain page).
 //
 // ---------------------------------------------------------------------------
-// FLAGGED DEVIATION - World ID step (Step 2): manual proof paste, not IDKitWidget
+// World ID step (Step 2): live IDKitWidget - @worldcoin/idkit PINNED to 2.4.2
 // ---------------------------------------------------------------------------
 // The task brief describes `<IDKitWidget app_id action onSuccess>` with a
 // render-prop child `({open}) => <button onClick={open}>` and a proof object
-// exposing `nullifier_hash` directly. That is the @worldcoin/idkit v3 API.
-// The version actually installed in this repo is v4.2.1, which is a
-// different SDK generation:
-//   - `IDKitWidget` does not exist in v4's exports at all (verified against
-//     node_modules/@worldcoin/idkit/dist/index.d.ts). The nearest analogues
-//     are `IDKitRequestWidget` (a controlled `open`/`onOpenChange` component)
-//     or the `useIDKitRequest` hook.
-//   - Both require a mandatory `rp_context: { rp_id, nonce, created_at,
-//     expires_at, signature }` field. That `signature` MUST be produced
-//     server-side with a private RP signing key via
-//     `@worldcoin/idkit-core/signing`'s `signRequest()`. Per
-//     node_modules/@worldcoin/idkit-core/README.md: "RP signing is
-//     intentionally not exposed on the browser global; generate RP
-//     signatures on your backend." ENSight has no backend anywhere in this
-//     project (it is a pure client-side extension + these localhost demo
-//     pages) and no RP signing key is configured, so there is no way to
-//     construct a valid request purely client-side, by design of the
-//     protocol - not a bug, not something a build/config change fixes.
-//   - Even granting a valid rp_context, the success result shape also
-//     differs: v4's `IDKitResultV4.responses[].nullifier` vs. the flat
-//     `proof.nullifier_hash` that `attestationFromProof()` (src/services/
-//     world-id.ts, unmodified) expects.
-//   - This is NOT a preact/compat rendering problem: a quick isolated smoke
-//     build (import IDKitRequestWidget, render under the react->preact/compat
-//     alias from scripts/build-onboarding.mjs) bundled and rendered fine,
-//     wasm chunk included. The blocker is the missing backend RP-signing
-//     infrastructure, which is architectural, not a build defect.
+// exposing `nullifier_hash` directly. There is NO idkit v3 - the package
+// jumps 2.x -> 4.x. `npm install @worldcoin/idkit` (unpinned) resolves to
+// 4.x, which has NO `IDKitWidget` export at all: its widget/hook API
+// (`IDKitRequestWidget`/`useIDKitRequest`) requires a mandatory
+// `rp_context: { rp_id, nonce, created_at, expires_at, signature }` whose
+// `signature` MUST be produced server-side with a private RP signing key
+// (node_modules/@worldcoin/idkit-core/README.md, verbatim: "RP signing is
+// intentionally not exposed on the browser global; generate RP signatures
+// on your backend"). ENSight has no backend anywhere in this project, so v4
+// cannot do live client-only verification here - that was the finding
+// written up in an earlier pass of this file (see git history / the
+// "FLAGGED DEVIATION" section of task-16-partB-report.md for the full
+// investigation) and is why the earlier version of this file used a
+// manual-paste fallback instead.
 //
-// Per the task brief's own contingency menu ("I'll decide between
-// react/react-dom devDeps or a manual proof-paste fallback for the World
-// step"), and since adding real react/react-dom is out of scope here (task
-// explicitly forbids changing package.json deps) and would not even solve
-// the rp_context problem, this step uses a manual proof-paste fallback: the
-// human pastes a JSON object containing (at minimum) `nullifier_hash`, which
-// is fed as-is into the REAL `attestationFromProof()`. This keeps the
-// consumed interface exactly as specified by the brief/Part A
-// (`attestationFromProof(proof)` -> `world:<hash>`); only the *source* of
-// the proof object changes, from a live IDKit widget callback to a manual
-// paste. This is surfaced prominently in the UI, not hidden.
+// @worldcoin/idkit@2.4.2 (package.json now pins this exact version) is the
+// last release with the client-only `IDKitWidget` API the brief assumes:
+// exports `IDKitWidget` from `./build/index.js` (verified via
+// `node -e "console.log(Object.keys(require('@worldcoin/idkit')))"`), no
+// `rp_context`/backend needed, `app_id`/`action`/`onSuccess` config, and a
+// render-prop child `({ open }) => JSX.Element` - exactly the shape used
+// below. Its `ISuccessResult` (node_modules/@worldcoin/idkit-core/build/
+// result-*.d.ts) has `nullifier_hash` directly, so it flows into the real,
+// unmodified `attestationFromProof()` (src/services/world-id.ts) with no
+// adaptation.
+//
+// idkit v2 is a React package (framer-motion, @radix-ui/react-dialog,
+// @radix-ui/react-toast, zustand internally, on top of the react/react-dom
+// peerDependency) and this repo only installs preact - see the
+// react->preact/compat alias in scripts/build-onboarding.mjs, which is
+// REQUIRED again for this build (it was written for the v4 investigation
+// too, but v4's widget was never actually wired in). Verified genuinely: a
+// full vite build of a standalone <IDKitWidget> under that alias bundles
+// cleanly (no unresolved react/react-dom/framer-motion/@radix-ui/zustand
+// imports), AND a jsdom render smoke test actually mounted it and produced
+// the expected `<button>Verify with World ID</button>` from the render-prop
+// child with no throw - so this is not a preact/compat rendering problem
+// either. No react/react-dom devDeps and no fallback were needed.
 // ---------------------------------------------------------------------------
 
 import { render } from 'preact';
 import { useState, useRef } from 'preact/hooks';
 import { ethers } from 'ethers';
 import type { BrowserProvider, JsonRpcSigner } from 'ethers';
+import { IDKitWidget, type ISuccessResult, type IErrorState } from '@worldcoin/idkit';
 import { CONFIG } from '../src/config';
 import { SIGN_MESSAGE, deriveKey } from '../src/core/crypto';
 import { attestationFromProof } from '../src/services/world-id';
@@ -95,6 +95,17 @@ async function switchChain(chainIdHex: string, addParams?: Record<string, unknow
     const code = err?.code ?? err?.data?.originalError?.code;
     if (code === 4902 && addParams) {
       await eth.request({ method: 'wallet_addEthereumChain', params: [addParams] });
+      // wallet_addEthereumChain does not reliably guarantee the wallet
+      // actually switched to the newly-added chain afterwards (behavior
+      // differs by wallet/version) - re-read the active chain and fail
+      // loudly with a clear instruction rather than silently proceeding to
+      // send a tx on the wrong network.
+      const active = (await eth.request({ method: 'eth_chainId' })) as string;
+      if (active.toLowerCase() !== chainIdHex.toLowerCase()) {
+        throw new Error(
+          `Wallet added chain ${chainIdHex} but is still on ${active} - please switch to it manually in MetaMask and retry.`
+        );
+      }
     } else {
       throw err;
     }
@@ -154,7 +165,6 @@ function App() {
 
   const [address, setAddress] = useState<string | null>(null);
 
-  const [proofPaste, setProofPaste] = useState('');
   const [attestation, setAttestation] = useState<string | null>(null);
 
   const [profile, setProfile] = useState<PersonaProfile>(emptyProfile());
@@ -212,13 +222,11 @@ function App() {
     }
   }
 
-  // ---- Step 2: Verify human (manual proof paste - see header comment) ----
-  function handleVerify(e: Event): void {
-    e.preventDefault();
+  // ---- Step 2: Verify human (live IDKitWidget - see header comment) ----
+  function handleWorldSuccess(proof: ISuccessResult): void {
     setError(2, null);
     try {
-      const parsed = JSON.parse(proofPaste);
-      const att = attestationFromProof(parsed);
+      const att = attestationFromProof(proof);
       setAttestation(att);
       appendLog(`Attestation: ${att}`);
       setStep(3);
@@ -303,25 +311,39 @@ function App() {
       const node = ethers.namehash(CONFIG.ensName);
       const iface = new ethers.Interface(['function setText(bytes32 node,string key,string value)']);
 
-      appendLog(`> setText(${CONFIG.recordKeys.human}, ${attestation})`);
-      const tx1 = await signer.sendTransaction({
-        to: resolver.address,
-        data: iface.encodeFunctionData('setText', [node, CONFIG.recordKeys.human, attestation])
-      });
-      const rcpt1 = await tx1.wait();
-      const hash1 = rcpt1!.hash;
-      setHumanTxHash(hash1);
-      appendLog(`human tx: ${hash1}`);
+      // Retry guard: if a previous attempt already landed the human-record
+      // tx (humanTxHash is set), don't re-send it on retry - go straight to
+      // the profile record. Makes this step resumable after a failure on
+      // the second tx without re-spending testnet gas on the first.
+      if (humanTxHash) {
+        appendLog(`human tx already confirmed (${humanTxHash}), skipping re-send`);
+      } else {
+        appendLog(`> setText(${CONFIG.recordKeys.human}, ${attestation})`);
+        const tx1 = await signer.sendTransaction({
+          to: resolver.address,
+          data: iface.encodeFunctionData('setText', [node, CONFIG.recordKeys.human, attestation])
+        });
+        const rcpt1 = await tx1.wait();
+        const hash1 = rcpt1!.hash;
+        setHumanTxHash(hash1);
+        appendLog(`human tx: ${hash1}`);
+      }
 
-      appendLog(`> setText(${CONFIG.recordKeys.profile}, ${profileUri})`);
-      const tx2 = await signer.sendTransaction({
-        to: resolver.address,
-        data: iface.encodeFunctionData('setText', [node, CONFIG.recordKeys.profile, profileUri])
-      });
-      const rcpt2 = await tx2.wait();
-      const hash2 = rcpt2!.hash;
-      setProfileTxHash(hash2);
-      appendLog(`profile tx: ${hash2}`);
+      // Symmetric retry guard for the second record, in case a retry is
+      // triggered after both already succeeded (e.g. an accidental re-click).
+      if (profileTxHash) {
+        appendLog(`profile tx already confirmed (${profileTxHash}), skipping re-send`);
+      } else {
+        appendLog(`> setText(${CONFIG.recordKeys.profile}, ${profileUri})`);
+        const tx2 = await signer.sendTransaction({
+          to: resolver.address,
+          data: iface.encodeFunctionData('setText', [node, CONFIG.recordKeys.profile, profileUri])
+        });
+        const rcpt2 = await tx2.wait();
+        const hash2 = rcpt2!.hash;
+        setProfileTxHash(hash2);
+        appendLog(`profile tx: ${hash2}`);
+      }
     } catch (err) {
       setError(5, logError('ens write', err));
     } finally {
@@ -350,25 +372,22 @@ function App() {
       {step === 2 && (
         <section>
           <h2>2. Verify human</h2>
-          <p style={{ background: '#fff3cd', padding: '0.6rem', borderRadius: 4, fontSize: 13 }}>
-            <strong>Manual proof paste (flagged deviation, see top of demo/onboarding.tsx):</strong> the
-            installed <code>@worldcoin/idkit</code> is v4.2.1, whose widget/hook API requires a
-            backend-signed <code>rp_context</code> that this backend-less localhost demo cannot produce.
-            Paste a World ID proof JSON below (must contain at least a <code>nullifier_hash</code> field) -
-            it is passed as-is to the real <code>attestationFromProof()</code>.
+          <p style={{ fontSize: 13, color: '#555' }}>
+            World ID staging (simulator) - <code>@worldcoin/idkit@2.4.2</code>. Opens the real widget; use the
+            World App simulator (Developer Portal, staging app) to complete verification without a physical Orb.
           </p>
-          <form onSubmit={handleVerify}>
-            <textarea
-              value={proofPaste}
-              onInput={e => setProofPaste((e.currentTarget as HTMLTextAreaElement).value)}
-              placeholder='{"nullifier_hash": "0x..."}'
-              rows={5}
-              style={{ width: '100%', boxSizing: 'border-box' }}
-            />
-            <div style={{ marginTop: 8 }}>
-              <button type="submit" disabled={busy || !proofPaste.trim()}>Use proof</button>
-            </div>
-          </form>
+          <IDKitWidget
+            app_id={CONFIG.worldAppId as `app_${string}`}
+            action={CONFIG.worldAction}
+            onSuccess={handleWorldSuccess}
+            onError={(err: IErrorState) => setError(2, `IDKit error: ${JSON.stringify(err)}`)}
+          >
+            {({ open }: { open: () => void }) => (
+              <button onClick={open} disabled={busy}>
+                Verify with World ID
+              </button>
+            )}
+          </IDKitWidget>
           {attestation && <p>Attestation: <code>{attestation}</code></p>}
           <ErrorBox message={errors[2]} />
         </section>

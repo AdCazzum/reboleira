@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img"
+     aria-label="Placeholder: chiave di sicurezza hardware NimbusKey Pro, vista frontale">
+  <rect width="800" height="450" fill="#eef1f5"/>
+  <!-- corpo della chiave -->
+  <rect x="250" y="185" width="300" height="80" rx="16" fill="#2f3944"/>
+  <rect x="530" y="205" width="52" height="40" rx="7" fill="#9aa6b4"/>
+  <circle cx="330" cy="225" r="21" fill="none" stroke="#6ee7b7" stroke-width="5"/>
+  <circle cx="330" cy="225" r="7" fill="#6ee7b7"/>
+  <rect x="392" y="215" width="86" height="20" rx="10" fill="#4b5766"/>
+  <text x="400" y="330" text-anchor="middle" font-family="system-ui, sans-serif"
+        font-size="24" fill="#3c4756" font-weight="600">NimbusKey Pro</text>
+  <text x="400" y="360" text-anchor="middle" font-family="system-ui, sans-serif"
+        font-size="18" fill="#7b8798">placeholder demo — FIDO2 / WebAuthn</text>
+</svg>

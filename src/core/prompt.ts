@@ -52,7 +52,16 @@ function buildSystemPrompt(): string {
     '- { "type": "list", "items": string[] }',
     '- { "type": "image", "refId": BLOCK_ID }',
     '- { "type": "action", "refId": BLOCK_ID, "label": string }',
-    '`refId` appears ONLY on `image` and `action` items — never on `text` or `list` items.'
+    '`refId` appears ONLY on `image` and `action` items — never on `text` or `list` items.',
+    '',
+    // Un modello piccolo enumera correttamente i valori ammessi e poi devia comunque,
+    // di solito dalla terza sezione in avanti. I divieti espliciti reggono meglio
+    // dell'elenco dei valori validi da solo (src/core/uispec-normalize.ts recupera
+    // ciò che passa comunque).
+    'FORBIDDEN values, seen from weaker models — these are NOT valid and will be rejected:',
+    '- `type`: "paragraph", "heading", "title", "bullet_list", "bulletList", "ul", "link", "button", "img", "quote", "code", "chart"',
+    '- `role`: "main", "article", "header", "footer", "sidebar", "nav", "body", "banner", "section"',
+    'Use ONLY the exact strings listed above, in EVERY section — not just the first one.'
   ].join('\n');
 
   const example = [

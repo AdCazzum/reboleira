@@ -581,6 +581,9 @@ a { color: var(--link); }
   color: var(--ink);
 }
 
+/* The free-text BCP-47 field, revealed under the language select. */
+.field__custom { margin-top: var(--s2); }
+
 /* ---- artifact (a literal on-chain value) ---- */
 
 .artifact {
@@ -1780,8 +1783,7 @@ export function ProfileForm({ profile, domainsInput, onProfileChange, onDomainsC
         </select>
         {custom && (
           <input
-            class="input"
-            style={{ marginTop: 8 }}
+            class="input field__custom"
             value={profile.language}
             aria-label="BCP-47 language tag"
             placeholder="BCP-47 tag, e.g. nl-BE"

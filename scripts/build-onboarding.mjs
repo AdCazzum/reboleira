@@ -29,24 +29,23 @@
 //    automatic JSX runtime pointed at preact, same as tsconfig.json's
 //    "jsx"/"jsxImportSource" pair for the src/ build.
 //
-// 2. React->Preact alias: @worldcoin/idkit (pinned to 2.4.2 - see
-//    package.json comment / the fix-report section of
-//    .superpowers/sdd/2026-07-24-ensight/task-16-partB-report.md for why
-//    2.4.2 and not the 4.x that npm installs by default) is a React package
-//    - not just a peer dependency of react/react-dom, but one that pulls in
-//    framer-motion, @radix-ui/react-dialog, @radix-ui/react-toast and
-//    zustand internally, none of which are otherwise used in this repo -
-//    and this repo only installs preact, no react/react-dom in
-//    node_modules. Aliasing react/react-dom/react-dom/client/react's
-//    jsx-runtime to preact/compat's equivalents (which ship as part of the
-//    already-installed `preact` package, no new deps) lets IDKitWidget and
-//    everything it pulls in resolve and render through Preact. Verified:
-//    this alias is REQUIRED (without it, the build fails to resolve
-//    "react"), and it is SUFFICIENT - a jsdom render smoke test
-//    (IDKitWidget mounted via preact/compat, closed state) produced the
-//    expected `<button>Verify with World ID</button>` from the render-prop
-//    child with no throw, so framer-motion/@radix-ui/zustand tolerate
-//    preact/compat fine here.
+// 2. React->Preact alias: @worldcoin/idkit (4.2.1 - World ID 4.0; see the
+//    header comment in demo/onboarding.tsx and the fix-report sections of
+//    .superpowers/sdd/2026-07-24-ensight/task-16-partB-report.md for the
+//    full history, including a detour through a 2.4.2 pin that this repo no
+//    longer uses) is a React package (peerDependencies: react/react-dom
+//    >=18, plus WASM internals via idkit-core) and this repo only installs
+//    preact, no react/react-dom in node_modules. Aliasing
+//    react/react-dom/react-dom/client/react's jsx-runtime to preact/compat's
+//    equivalents (which ship as part of the already-installed `preact`
+//    package, no new deps) lets IDKitRequestWidget and everything it pulls
+//    in resolve and render through Preact. Verified: this alias is REQUIRED
+//    (without it, the build fails to resolve "react"), and it is SUFFICIENT
+//    - a jsdom render smoke test (IDKitRequestWidget mounted via
+//    preact/compat with a real rp_context, closed state) produced the
+//    expected `<button>Verify with World ID</button>` from the surrounding
+//    markup with no throw, and the WASM chunk (idkit_wasm_bg*.wasm, ~869 KB)
+//    bundles and gets emitted as its own asset without issue.
 //
 // Usage: node scripts/build-onboarding.mjs
 import { build } from 'vite';

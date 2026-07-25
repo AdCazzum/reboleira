@@ -17,61 +17,95 @@
 // script that does not exist on this plain page).
 //
 // ---------------------------------------------------------------------------
-// World ID step (Step 2): live IDKitWidget - @worldcoin/idkit PINNED to 2.4.2
+// World ID step (Step 2): REAL World ID 4.0 verification - idkit v4.2.1,
+// IDKitRequestWidget + a client-signed rp_context (demo-only - see below)
 // ---------------------------------------------------------------------------
-// The task brief describes `<IDKitWidget app_id action onSuccess>` with a
-// render-prop child `({open}) => <button onClick={open}>` and a proof object
-// exposing `nullifier_hash` directly. There is NO idkit v3 - the package
-// jumps 2.x -> 4.x. `npm install @worldcoin/idkit` (unpinned) resolves to
-// 4.x, which has NO `IDKitWidget` export at all: its widget/hook API
+// History (see git log / earlier revisions of this comment for the full
+// blow-by-blow): the World Developer Portal now provisions World ID 4.0
+// apps. An earlier pass of this file pinned @worldcoin/idkit@2.4.2 (the last
+// release with the simple client-only `IDKitWidget` render-prop API) because
+// the installed v4.2.1 has NO `IDKitWidget` export and its widget/hook API
 // (`IDKitRequestWidget`/`useIDKitRequest`) requires a mandatory
 // `rp_context: { rp_id, nonce, created_at, expires_at, signature }` whose
-// `signature` MUST be produced server-side with a private RP signing key
-// (node_modules/@worldcoin/idkit-core/README.md, verbatim: "RP signing is
-// intentionally not exposed on the browser global; generate RP signatures
-// on your backend"). ENSight has no backend anywhere in this project, so v4
-// cannot do live client-only verification here - that was the finding
-// written up in an earlier pass of this file (see git history / the
-// "FLAGGED DEVIATION" section of task-16-partB-report.md for the full
-// investigation) and is why the earlier version of this file used a
-// manual-paste fallback instead.
+// `signature` the docs (and node_modules/@worldcoin/idkit-core/README.md,
+// verbatim: "RP signing is intentionally not exposed on the browser global;
+// generate RP signatures on your backend") say must come from a backend -
+// which ENSight does not have.
 //
-// @worldcoin/idkit@2.4.2 (package.json now pins this exact version) is the
-// last release with the client-only `IDKitWidget` API the brief assumes:
-// exports `IDKitWidget` from `./build/index.js` (verified via
-// `node -e "console.log(Object.keys(require('@worldcoin/idkit')))"`), no
-// `rp_context`/backend needed, `app_id`/`action`/`onSuccess` config, and a
-// render-prop child `({ open }) => JSX.Element` - exactly the shape used
-// below. Its `ISuccessResult` (node_modules/@worldcoin/idkit-core/build/
-// result-*.d.ts) has `nullifier_hash` directly, so it flows into the real,
-// unmodified `attestationFromProof()` (src/services/world-id.ts) with no
-// adaptation.
+// The user then created a real World ID 4.0 app + on-chain-registered RP in
+// the Developer Portal and decided to do REAL v4 verification instead of the
+// v2 widget or a manual-paste fallback. @worldcoin/idkit is back to 4.2.1
+// (package.json). For this backend-less localhost demo, rp_context is
+// signed CLIENT-SIDE with the RP's private signing key, using the pure-JS
+// (no WASM) `signRequest()` from the `@worldcoin/idkit/signing` subpath
+// (confirmed: `@worldcoin/idkit-core/signing` -> `@worldcoin/idkit-server`,
+// "Signs an RP request using pure JS (no WASM required) ... Ethereum EIP-191
+// message signing").
 //
-// idkit v2 is a React package (framer-motion, @radix-ui/react-dialog,
-// @radix-ui/react-toast, zustand internally, on top of the react/react-dom
-// peerDependency) and this repo only installs preact - see the
-// react->preact/compat alias in scripts/build-onboarding.mjs, which is
-// REQUIRED again for this build (it was written for the v4 investigation
-// too, but v4's widget was never actually wired in). Verified genuinely: a
-// full vite build of a standalone <IDKitWidget> under that alias bundles
-// cleanly (no unresolved react/react-dom/framer-motion/@radix-ui/zustand
-// imports), AND a jsdom render smoke test actually mounted it and produced
-// the expected `<button>Verify with World ID</button>` from the render-prop
-// child with no throw - so this is not a preact/compat rendering problem
-// either. No react/react-dom devDeps and no fallback were needed.
+//   DEMO-ONLY, NOT A PRODUCTION PATTERN: signing rp_context in the browser
+//   means the RP signing key ends up inlined into demo/onboarding.js by
+//   scripts/build-onboarding.mjs (same import.meta.env mechanism as every
+//   other VITE_ var - see .env.example). This is acceptable ONLY because the
+//   World ID app/RP behind this demo is a disposable, throwaway one whose
+//   key gets rotated/revoked after use. A real product signs rp_context on a
+//   backend server that holds the key, never in a client bundle.
+//
+// Verified against the ACTUALLY INSTALLED types (not assumed from docs),
+// since the installed `IDKitResult` (`@worldcoin/idkit`, re-exported from
+// idkit-core) is `IDKitResultV3 | IDKitResultV4 | IDKitResultSession` - a
+// union of OBJECTS each with a `responses: ResponseItem*[]` array field, NOT
+// a bare `ResponseItemV4[]` array itself. `orbLegacy` presets are documented
+// as "This preset only returns World ID 3.0 proofs", so with
+// `preset={orbLegacy(...)}` the actual result is `IDKitResultV3`-shaped at
+// runtime, but the TYPE surfaced to `onSuccess` is still the full 3-way
+// union (IDKitRequestWidget's prop types aren't narrowed by preset). Both V3
+// and V4 response items expose `.nullifier` (hex); only the session variant
+// (`ResponseItemSession`) does not (it has `session_nullifier: string[]`
+// instead) - IDKitRequestWidget (the non-session request widget used here)
+// can never actually produce a session result, so `'nullifier' in item`
+// narrows the type safely and correctly (see extractNullifier() below)
+// without an unsafe cast, while staying honest about the full union type
+// the SDK declares.
+//
+// `signRequest({ signingKeyHex, action? }) -> { sig, nonce, createdAt,
+// expiresAt }` (node_modules/@worldcoin/idkit-server/dist/index.d.ts) -
+// mapped 1:1 onto RpContext's snake_case fields below. The signed `action`
+// MUST exactly match the widget's own `action` prop (the RP signature
+// covers the action per idkit-server's `computeRpSignatureMessage` message
+// format), so both read from the same `CONFIG.worldAction`.
+//
+// idkit v4 is a React package (uses WASM internally via idkit-core) and this
+// repo only installs preact - the react->preact/compat alias in
+// scripts/build-onboarding.mjs is required. This was verified to work back
+// in the FIRST Part B pass, before the v2 detour: a standalone
+// IDKitRequestWidget smoke build bundled cleanly under that alias (WASM
+// chunk included, ~869 KB), with no unresolved react/react-dom imports.
 // ---------------------------------------------------------------------------
 
 import { render } from 'preact';
 import { useState, useRef } from 'preact/hooks';
 import { ethers } from 'ethers';
 import type { BrowserProvider, JsonRpcSigner } from 'ethers';
-import { IDKitWidget, type ISuccessResult, type IErrorState } from '@worldcoin/idkit';
+import { IDKitRequestWidget, orbLegacy, IDKitErrorCodes } from '@worldcoin/idkit';
+import type { IDKitResult, IDKitDebugReport, RpContext } from '@worldcoin/idkit';
+import { signRequest } from '@worldcoin/idkit/signing';
 import { CONFIG } from '../src/config';
 import { SIGN_MESSAGE, deriveKey } from '../src/core/crypto';
 import { attestationFromProof } from '../src/services/world-id';
 import { createZeroGStorageBackend, storeProfile } from '../src/services/zerog-storage';
 import type { ZeroGStorageSdkLoader } from '../src/services/zerog-storage';
 import type { PersonaProfile } from '../src/core/types';
+
+// Narrows IDKitResult's response item union down to the variants that carry
+// `.nullifier` (V3/V4 uniqueness proofs), excluding the session variant
+// (`session_nullifier: string[]`) that IDKitRequestWidget never actually
+// produces. See the header comment above for why this is safe.
+function extractNullifier(result: IDKitResult): string {
+  const item = result.responses[0];
+  if (!item) throw new Error('World ID result has no responses');
+  if ('nullifier' in item) return item.nullifier;
+  throw new Error('World ID result has no nullifier (got a session proof, which IDKitRequestWidget should never produce)');
+}
 
 type StepNum = 1 | 2 | 3 | 4 | 5;
 const STEPS: { n: StepNum; label: string }[] = [
@@ -166,6 +200,8 @@ function App() {
   const [address, setAddress] = useState<string | null>(null);
 
   const [attestation, setAttestation] = useState<string | null>(null);
+  const [worldOpen, setWorldOpen] = useState(false);
+  const [rpContext, setRpContext] = useState<RpContext | null>(null);
 
   const [profile, setProfile] = useState<PersonaProfile>(emptyProfile());
   const [domainsInput, setDomainsInput] = useState('');
@@ -222,17 +258,46 @@ function App() {
     }
   }
 
-  // ---- Step 2: Verify human (live IDKitWidget - see header comment) ----
-  function handleWorldSuccess(proof: ISuccessResult): void {
+  // ---- Step 2: Verify human (World ID 4.0, IDKitRequestWidget - see header comment) ----
+  // Signs a fresh rp_context client-side (DEMO-ONLY, see header comment) and
+  // opens the widget. Re-signed on every click so the nonce/TTL are always
+  // fresh, in case a previous attempt's context expired.
+  function openWorldWidget(): void {
     setError(2, null);
     try {
-      const att = attestationFromProof(proof);
+      const signingKeyHex = import.meta.env.VITE_WORLD_RP_SIGNING_KEY as string;
+      if (!signingKeyHex) throw new Error('VITE_WORLD_RP_SIGNING_KEY not set in .env (demo-only RP signing key - see .env.example)');
+      if (!CONFIG.worldRpId) throw new Error('VITE_WORLD_RP_ID not set in .env');
+      appendLog('> signRequest({ signingKeyHex, action }) [client-side, demo-only]');
+      const { sig, nonce, createdAt, expiresAt } = signRequest({
+        signingKeyHex,
+        action: CONFIG.worldAction
+      });
+      setRpContext({ rp_id: CONFIG.worldRpId, nonce, created_at: createdAt, expires_at: expiresAt, signature: sig });
+      setWorldOpen(true);
+    } catch (err) {
+      setError(2, logError('world sign', err));
+    }
+  }
+
+  function handleWorldSuccess(result: IDKitResult): void {
+    setError(2, null);
+    try {
+      const nullifier = extractNullifier(result);
+      const att = attestationFromProof({ nullifier_hash: nullifier });
       setAttestation(att);
+      appendLog(`World ID protocol_version=${result.protocol_version}, nullifier=${nullifier}`);
       appendLog(`Attestation: ${att}`);
+      setWorldOpen(false);
       setStep(3);
     } catch (err) {
       setError(2, logError('verify', err));
     }
+  }
+
+  function handleWorldError(code: IDKitErrorCodes, debugReport?: IDKitDebugReport): void {
+    setWorldOpen(false);
+    setError(2, logError('world verify', new Error(`${code}${debugReport ? ` - ${JSON.stringify(debugReport)}` : ''}`)));
   }
 
   // ---- Step 3: Profile form ----
@@ -373,21 +438,29 @@ function App() {
         <section>
           <h2>2. Verify human</h2>
           <p style={{ fontSize: 13, color: '#555' }}>
-            World ID staging (simulator) - <code>@worldcoin/idkit@2.4.2</code>. Opens the real widget; use the
-            World App simulator (Developer Portal, staging app) to complete verification without a physical Orb.
+            World ID 4.0 staging (simulator) - <code>@worldcoin/idkit@4.2.1</code>,{' '}
+            <code>IDKitRequestWidget</code>. rp_context is signed client-side with a demo-only RP key (see the
+            header comment in this file and <code>.env.example</code>) - never do this in production. Opens the
+            real widget; use the World App simulator (Developer Portal, staging app) to complete verification
+            without a physical Orb.
           </p>
-          <IDKitWidget
-            app_id={CONFIG.worldAppId as `app_${string}`}
-            action={CONFIG.worldAction}
-            onSuccess={handleWorldSuccess}
-            onError={(err: IErrorState) => setError(2, `IDKit error: ${JSON.stringify(err)}`)}
-          >
-            {({ open }: { open: () => void }) => (
-              <button onClick={open} disabled={busy}>
-                Verify with World ID
-              </button>
-            )}
-          </IDKitWidget>
+          <button onClick={openWorldWidget} disabled={busy || worldOpen}>
+            Verify with World ID
+          </button>
+          {rpContext && (
+            <IDKitRequestWidget
+              open={worldOpen}
+              onOpenChange={setWorldOpen}
+              app_id={CONFIG.worldAppId as `app_${string}`}
+              action={CONFIG.worldAction}
+              rp_context={rpContext}
+              environment="staging"
+              allow_legacy_proofs={true}
+              preset={orbLegacy({ signal: address ?? undefined })}
+              onSuccess={handleWorldSuccess}
+              onError={handleWorldError}
+            />
+          )}
           {attestation && <p>Attestation: <code>{attestation}</code></p>}
           <ErrorBox message={errors[2]} />
         </section>

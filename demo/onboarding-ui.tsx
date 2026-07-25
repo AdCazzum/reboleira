@@ -8,7 +8,7 @@
 // mock-up of it.
 import type { ComponentChildren } from 'preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
-import { chainLabel, shortenMiddle } from './onboarding-logic';
+import { chainLabel, shortenMiddle, guidanceFor, type PreflightIssue } from './onboarding-logic';
 
 export function MastheadMeta({ ensName, chainId, address }: {
   ensName: string;
@@ -143,10 +143,37 @@ export function LogPanel({ lines }: { lines: string[] }) {
   );
 }
 
-// --- replaced in Task 4 ---
-export function ErrorBlock({ error }: { error: string | null; onRetry: (() => void) | null }) {
+/** Errors get three parts: what failed, the raw message (never truncated — it
+ *  is often the only diagnostic), and, when the failure is one we recognise,
+ *  what to do about it. */
+export function ErrorBlock({ error, onRetry }: { error: unknown; onRetry: (() => void) | null }) {
   if (!error) return null;
-  return <p class="error__summary" role="alert">Error: {error}</p>;
+  const message = error instanceof Error ? error.message : String(error);
+  const guidance = guidanceFor(error);
+  return (
+    <div class="error" role="alert">
+      <p class="error__summary">That step did not complete.</p>
+      <p class="error__raw">{message}</p>
+      {guidance && <p class="error__guidance">{guidance}</p>}
+      {onRetry && <button type="button" class="btn btn--quiet" onClick={onRetry}>Try again</button>}
+    </div>
+  );
+}
+
+/** Warns, never blocks: the point is to surface a broken setup before a wallet
+ *  is connected, not to decide the run is impossible. */
+export function PreflightStrip({ issues }: { issues: PreflightIssue[] }) {
+  if (issues.length === 0) return null;
+  return (
+    <div class="preflight" role="status">
+      <p class="preflight__title">
+        {issues.length === 1 ? 'One thing needs attention' : `${issues.length} things need attention`}
+      </p>
+      <ul class="preflight__list">
+        {issues.map(i => <li key={i.id}>{i.message}</li>)}
+      </ul>
+    </div>
+  );
 }
 
 // --- replaced in Task 5 ---

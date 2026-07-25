@@ -377,6 +377,8 @@ a { color: var(--link); }
 
 .choice:has(:checked) { border-color: var(--ink); }
 
+.choice input[type="radio"], .choice input[type="checkbox"] { accent-color: var(--ink); }
+
 .choice__text { display: block; }
 
 .choice__name { display: block; font-weight: 550; }

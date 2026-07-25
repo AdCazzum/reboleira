@@ -238,9 +238,9 @@ export function DomainChips({ value, onChange }: { value: string; onChange: (val
 
   function commit(raw: string): void {
     const next = parseDomains(raw);
-    if (next.length === 0) return;
-    onChange(formatDomains([...chips, ...next.filter(c => !chips.includes(c))]));
     setDraft('');
+    if (next.length === 0) return;
+    onChange(formatDomains([...new Set([...chips, ...next])]));
   }
 
   return (

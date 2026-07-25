@@ -412,7 +412,38 @@ export function ProfileForm({ profile, domainsInput, onProfileChange, onDomainsC
   );
 }
 
-// --- replaced in Task 6 ---
-export function Summary(_props: Record<string, unknown>) {
-  return <p class="summary__done">Onboarding complete.</p>;
+/** The end state, and the thing to put on screen during a demo: both records,
+ *  both transactions, and a link to the public ENS page that now serves them.
+ *  docs/DEMO-SCRIPT.md opens that page by hand today. */
+export function Summary({ ensName, recordKeys, attestation, profileUri, humanTxHash, profileTxHash }: {
+  ensName: string;
+  recordKeys: { profile: string; human: string };
+  attestation: string | null;
+  profileUri: string | null;
+  humanTxHash: string;
+  profileTxHash: string;
+}) {
+  return (
+    <section class="card" data-step="done">
+      <p class="summary__done">Profile published to {ensName}.</p>
+      <h2 class="card__title">Two public records, no public profile</h2>
+      <p class="card__why">
+        Anyone can read both records. Neither reveals what is in your profile:
+        one is a uniqueness proof, the other a pointer to ciphertext.
+      </p>
+
+      {attestation && <Artifact label={recordKeys.human} value={attestation} />}
+      {profileUri && <Artifact label={recordKeys.profile} value={profileUri} />}
+      <Artifact label="Human tx" value={humanTxHash} href={`https://sepolia.etherscan.io/tx/${humanTxHash}`} />
+      <Artifact label="Profile tx" value={profileTxHash} href={`https://sepolia.etherscan.io/tx/${profileTxHash}`} />
+
+      <ul class="summary__links">
+        <li>
+          <a href={`https://sepolia.app.ens.domains/${ensName}`} target="_blank" rel="noreferrer">
+            See both records on the public ENS page
+          </a>
+        </li>
+      </ul>
+    </section>
+  );
 }

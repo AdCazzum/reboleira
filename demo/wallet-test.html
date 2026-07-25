@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ENSight - Task 12 wallet bridge manual test</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; }
+  button { font-size: 1rem; padding: 0.5rem 1rem; margin-right: 0.5rem; cursor: pointer; }
+  button:disabled { cursor: not-allowed; opacity: 0.5; }
+  code { background: #eee; padding: 0.1rem 0.3rem; border-radius: 3px; }
+  #results {
+    white-space: pre-wrap;
+    word-break: break-all;
+    background: #111;
+    color: #0f0;
+    padding: 1rem;
+    margin-top: 1rem;
+    min-height: 6rem;
+    font-family: ui-monospace, monospace;
+    font-size: 0.85rem;
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+<h1>ENSight wallet bridge manual test (Task 12)</h1>
+<p>
+  Dev/test-only harness - NOT part of the shipped extension. Loads the REAL
+  <code>src/content/bridge.ts</code> + <code>src/content/injected.ts</code> +
+  <code>src/core/crypto.ts</code> to exercise
+  <code>callInjected('eth_requestAccounts', [])</code> and
+  <code>callInjected('personal_sign', [SIGN_MESSAGE])</code> against a real
+  MetaMask instance.
+</p>
+<p>
+  Serve this directory over <code>http://localhost</code> (not <code>file://</code>)
+  so MetaMask injects <code>window.ethereum</code> reliably.
+</p>
+<button id="connect">Connect wallet</button>
+<button id="sign" disabled>Sign SIGN_MESSAGE</button>
+<div id="results"></div>
+<script type="module" src="./wallet-test.js"></script>
+</body>
+</html>

@@ -16,13 +16,19 @@ unless something visibly fails — it just quietly works.
 ## 0. Setup (done before you go on stage)
 
 - Extension built (`npm run build`) and loaded unpacked in Chrome.
-- Mock pages served: `python3 -m http.server -d demo 8080`.
+- **One** local server for the whole demo: `node scripts/onboarding-server.mjs`.
+  It serves all of `demo/` (the mock pages *and* `onboarding.html`) from
+  `http://localhost:8080` AND signs the World ID `rp_context` for step 5 —
+  don't also start `python3 -m http.server` on 8080, it'll either collide
+  with this one (`EADDRINUSE`) or, if it wins the port instead, silently
+  break step 5 (it has no `/rp-context` route, so World-verify 404s mid-demo).
+  One server, one port, same-origin for everything.
 - A profile already published on ENS (`reboleira.eth` in this build):
   `app.ensight.profile` points at an encrypted blob on 0G Storage,
   `app.ensight.human` holds a World ID attestation.
 
 Have two browser tabs ready: one on `localhost:8080/page-a-news.html`, one on
-`sepolia.app.ens.domains/reboleira.eth` (for step 5).
+`sepolia.app.ens.domains/reboleira.eth` (for step 4).
 
 ---
 
@@ -94,9 +100,9 @@ tab and show the two text records live in the resolver.
 ## 5. Onboarding, optional beat (30s, only if time and network allow)
 
 **Say:** "Setting up a profile is the same pipeline in reverse." Open
-`http://localhost:8080/onboarding.html` (served by
-`node scripts/onboarding-server.mjs`, which also signs the World ID request
-locally so the signing key never reaches the browser).
+`http://localhost:8080/onboarding.html` — the same `onboarding-server.mjs`
+from setup is already serving it, and it also signs the World ID request
+locally so the signing key never reaches the browser.
 
 **Click through, narrating each step:** connect wallet → World ID verify
 (simulator, no Orb needed on staging) → fill the profile form → encrypt +

@@ -23,22 +23,20 @@ section first: it is the safety net the whole runbook falls back to.
 
 ### What is on `master` right now
 
-Several finished pieces sit on branches that have not been merged. **Check
-this before you build** — it decides which steps below actually work.
-
 | Piece | Where | Needed for |
 |---|---|---|
 | Extract → validate → render → toggle, fixtures | `master` | the whole offline demo |
 | 0G Storage + 0G Compute adapters, all `scripts/` | `master` | [2.2](#22-verify-each-live-path-before-the-demo-) |
-| ENS read/write + `scripts/try-ens.ts` | `ensight/task-13-ens` | ENS steps |
-| World ID `attestationFromProof` | `ensight/task-14-world-id` | onboarding |
-| Popup UI (toggle + persona selector) | `ensight/task-15-popup` | [2.5](#25-show-the-two-personas-) |
-| `withFallback` helper | `ensight/task-16a-fallback` | onboarding |
-| Onboarding wizard (Task 16) | **not built** | [2.4](#24-run-the-onboarding-) |
+| ENS read/write + `scripts/try-ens.ts` | `master` | ENS steps |
+| World ID `attestationFromProof` | `master` | onboarding |
+| Popup UI (toggle + persona selector) | `master` | [2.5](#25-show-the-two-personas-) |
+| `withFallback` helper | `master` | onboarding |
+| Onboarding wizard (Task 16) | `ensight/task-16-onboarding` (PR open, about to merge) | [2.4](#24-run-the-onboarding-) |
 
-To demo the fullest version available today, merge the four branches into a
-throwaway integration branch and build from that. If you only want the safe
-offline demo, `master` alone is enough.
+Everything above is merged to `master` except the onboarding wizard, which is
+built and live-verified but still sitting in an open PR — build from that
+branch (or wait for the merge) to get [2.4](#24-run-the-onboarding-) working
+as written; every other section works from `master` alone.
 
 ---
 
@@ -212,10 +210,9 @@ verified check the testnet exposed two providers, and only one serves text:
 Do not hard-code the address blindly — providers come and go. Step 1 is the
 source of truth; the table is a starting point.
 
-> Command (4) needs the `ensight/task-13-ens` branch — `scripts/try-ens.ts` is
-> not on `master` yet. It writes
-> the text record **directly** with `ethers.Wallet` + `resolver.setText`,
-> mirroring what `src/content/injected.ts` does in the browser, because
+> `scripts/try-ens.ts` (command 4, on `master`) writes the text record
+> **directly** with `ethers.Wallet` + `resolver.setText`, mirroring what
+> `src/content/injected.ts` does in the browser, because
 > `writeProfilePointer()` goes through `callInjected()` and needs a real
 > `window` + MetaMask.
 
@@ -244,48 +241,70 @@ python3 -m http.server -d demo 8080
 Pages: <http://localhost:8080/page-a-news.html> and
 <http://localhost:8080/page-b-product.html>.
 
-### 2.4 Run the onboarding ⏳
+### 2.4 Run the onboarding ✅
 
-**Requires Task 16 (onboarding wizard), not built yet.** When it lands, the
-flow is: popup → *Configura profilo* → connect wallet → World ID verify →
-fill the profile form → sign (derives the AES key) → encrypt + upload to 0G
-Storage → write the ENS pointer + attestation. It ends showing a Sepolia
-transaction hash.
+The onboarding wizard is built and live-verified (`ensight/task-16-onboarding`,
+PR open — merge it or build from that branch if it hasn't landed yet). It is
+a standalone `localhost` page, not a packed extension page, because MetaMask
+only injects `window.ethereum` into normal http(s) pages.
 
-**Manual equivalent today** — the same on-chain end state, assembled from the
-verified scripts:
+Start its server — it serves all of `demo/` (mock pages included) **and**
+signs the World ID `rp_context` on `POST /rp-context`, so it doubles as the
+static server for the mock pages from [2.3](#23-build-and-load-the-extension-)
+too. Use this one server for everything and skip the `python3 -m http.server`
+line in 2.3 — both bind port 8080, and only this one has `/rp-context`:
+
+```bash
+node scripts/onboarding-server.mjs
+# -> http://localhost:8080/onboarding.html
+```
+
+Requires `WORLD_RP_SIGNING_KEY` / `WORLD_RP_ID` set (env or `.env`, repo
+root) before starting the server — deliberately **not** `VITE_`-prefixed, so
+the RP signing key never gets inlined into a browser bundle. `signRequest()`
+(from `@worldcoin/idkit/signing`) only runs under Node, which is the whole
+reason this server exists instead of signing client-side.
+
+The flow: connect wallet → verify human via **World ID 4.0** (staging +
+simulator, no physical Orb needed) → fill the profile form → sign (derives
+the AES key) → encrypt + upload to 0G Storage → write the ENS pointer +
+attestation. It ends showing a Sepolia transaction hash.
+
+**Optional manual fallback**, if you want the same on-chain end state without
+the wizard UI (e.g. to pre-stage a profile before the demo):
 
 1. `scripts/try-storage.ts` uploads an encrypted profile and prints its
    **root hash**.
 2. `scripts/try-ens.ts` writes that root hash into the
    `app.ensight.profile` text record of your ENS name.
 
-That reproduces steps 4 and 5 of the wizard. Steps 1–3 (connect, World verify,
-profile form) have no headless equivalent; for the wallet half you can still
-demo `demo/wallet-test.html` (see 2.6).
+That reproduces the encrypt/upload + ENS-write half of the wizard headlessly;
+it has no equivalent for the connect/World-verify/form steps.
 
-### 2.5 Show the two personas ⏳
+### 2.5 Show the two personas ✅
 
-**The popup is built (Task 15) but lives on the `ensight/task-15-popup`
-branch** — it is not on `master` yet. Which path you get depends on what you
-built from:
-
-**With the Task 15 branch** — click the ENSight toolbar icon:
+The popup UI is on `master` — click the ENSight toolbar icon:
 
 1. **Adatta questa pagina** — toggles the adapted UI on the active tab.
 2. **Persona (dev)** — the selector writes `chrome.storage.local.persona`.
 3. **Profilo: trovato / non configurato** — reads
-   `chrome.storage.local.profileUri`, which the Task 16 onboarding will write.
-4. **Configura profilo** — opens the onboarding tab. Until Task 16 lands this
-   is an error page; expected.
+   `chrome.storage.local.profileUri`.
+4. **Configura profilo** — this button points at a packed extension page
+   (`src/ui/onboarding/index.html`) that was never built: the real
+   onboarding wizard ([2.4](#24-run-the-onboarding-)) is a standalone
+   `localhost` page instead (MetaMask needs a normal http(s) origin to
+   inject `window.ethereum`), served separately by
+   `node scripts/onboarding-server.mjs`. Clicking it here opens an error
+   page — expected; open `http://localhost:8080/onboarding.html` directly
+   for onboarding instead.
 
 > The persona applies to the **next** adaptation — `activePersona()` is read
 > when the adapted view is built. Toggle **off**, switch persona, toggle **on**.
 
-**From `master`** the popup is still the placeholder `index.html` with no
-script, so the toolbar icon opens an empty panel. Drive the same two controls
-from the **service worker console** instead: `chrome://extensions` → the
-ENSight card → click **service worker**.
+If the toolbar icon ever does open an empty panel (e.g. a build predating the
+Task 15 popup), drive the same two controls from the **service worker
+console** instead: `chrome://extensions` → the ENSight card → click
+**service worker**.
 
 ```js
 // switch persona
@@ -413,9 +432,10 @@ Re-run `npm run build` and reload the extension. `VITE_*` values are inlined
 at build time.
 
 **The popup is empty**
-You built from `master`; the popup UI is on the `ensight/task-15-popup`
-branch. Either build from that branch or use the service-worker console — see
-[2.5](#25-show-the-two-personas-).
+The popup UI is on `master`, so this shouldn't happen from a current build —
+it means you're on an older build predating the Task 15 popup. Rebuild from
+current `master`, or use the service-worker console workaround in
+[2.5](#25-show-the-two-personas-) in the meantime.
 
 **The popup says "Content script non attivo qui"**
 `chrome.tabs.sendMessage` rejected because no content script runs on that tab

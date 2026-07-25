@@ -29,7 +29,10 @@ import { fileURLToPath } from 'node:url';
 const ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '..');
 const DIST = join(ROOT, 'dist-e2e');
 
-const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.css': 'text/css' };
+const MIME = {
+  '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.css': 'text/css',
+  '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg'
+};
 
 let failures = 0;
 function check(label, ok, detail = '') {

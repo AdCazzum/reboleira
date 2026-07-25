@@ -101,7 +101,11 @@ const MIME_TYPES = {
   '.mjs': 'text/javascript',
   '.json': 'application/json',
   '.map': 'application/json',
-  '.wasm': 'application/wasm' // critical: idkit_wasm_bg.wasm won't instantiate as application/octet-stream
+  '.wasm': 'application/wasm', // critical: idkit_wasm_bg.wasm won't instantiate as application/octet-stream
+  '.svg': 'image/svg+xml', // likewise: <img> refuses to render SVG served as application/octet-stream
+  '.css': 'text/css',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg'
 };
 
 function mimeFor(filePath) {

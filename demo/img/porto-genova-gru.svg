@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img"
+     aria-label="Placeholder: gru portuali al porto di Genova al tramonto">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b3d55"/>
+      <stop offset="0.55" stop-color="#7a5a63"/>
+      <stop offset="1" stop-color="#d99a6c"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="450" fill="url(#sky)"/>
+  <circle cx="620" cy="300" r="46" fill="#f2c078" opacity="0.9"/>
+  <!-- profili di gru portuali, stilizzati -->
+  <g stroke="#1b2733" stroke-width="7" fill="none" opacity="0.85">
+    <path d="M120 380 V190 H250 M120 220 H250 M175 190 V150"/>
+    <path d="M330 380 V210 H460 M330 240 H460 M385 210 V170"/>
+    <path d="M540 380 V230 H660 M540 260 H660 M595 230 V195"/>
+  </g>
+  <rect y="380" width="800" height="70" fill="#16202b"/>
+  <text x="400" y="424" text-anchor="middle" font-family="system-ui, sans-serif"
+        font-size="19" fill="#8fa3b8">placeholder demo — porto di Genova</text>
+</svg>

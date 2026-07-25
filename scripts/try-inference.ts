@@ -9,7 +9,7 @@
 //
 // Env vars:
 //   PRIVATE_KEY       (required) testnet wallet private key (0x...). The
-//                      wallet needs OG on 0G Galileo testnet (chainId 16601)
+//                      wallet needs OG on 0G Galileo testnet (chainId 16602)
 //                      to pay for gas and inference. NEVER commit a real key;
 //                      export it in your shell before running this script.
 //   ZEROG_RPC         (optional) JSON-RPC endpoint, default
@@ -56,7 +56,7 @@ if (!PRIVATE_KEY) {
 }
 
 async function main(): Promise<void> {
-  console.log(`[1/4] connecting to ${ZEROG_RPC} (chainId 16601 expected)...`);
+  console.log(`[1/4] connecting to ${ZEROG_RPC} (chainId 16602 expected)...`);
   const provider = new ethers.JsonRpcProvider(ZEROG_RPC);
   const wallet = new ethers.Wallet(PRIVATE_KEY as string, provider);
   console.log(`      wallet address: ${wallet.address}`);

@@ -14,7 +14,7 @@
 //
 // Env vars:
 //   PRIVATE_KEY   (required) testnet wallet private key (0x...). The wallet
-//                 needs OG on 0G Galileo testnet (chainId 16601) to pay for
+//                 needs OG on 0G Galileo testnet (chainId 16602) to pay for
 //                 upload gas + storage fees.
 //   ZEROG_RPC     (optional) EVM JSON-RPC endpoint, default
 //                 https://evmrpc-testnet.0g.ai
@@ -68,7 +68,7 @@ function deepEqual(a: unknown, b: unknown): boolean {
 }
 
 async function main(): Promise<void> {
-  console.log(`[1/5] connecting to ${ZEROG_RPC} (chainId 16601 expected)...`);
+  console.log(`[1/5] connecting to ${ZEROG_RPC} (chainId 16602 expected)...`);
   const provider = new ethers.JsonRpcProvider(ZEROG_RPC);
   const wallet = new ethers.Wallet(PRIVATE_KEY as string, provider);
   console.log(`      wallet address: ${wallet.address}`);

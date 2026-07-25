@@ -1,3 +1,5 @@
+// ISOLATED world: the 0G Storage SDK runs here — see node-shims.ts. Must stay the first import.
+import './node-shims';
 import { JsonRpcProvider } from 'ethers';
 import { adaptPage } from './adapt';
 import type { SpecProvider } from './adapt';

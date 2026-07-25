@@ -26,9 +26,16 @@ export default defineConfig({
   // the 0G SDKs detect Node with `process.versions.node !== undefined`, so an
   // empty object keeps that check correctly false and they take their browser
   // code paths (e.g. WebCrypto instead of node:crypto randomBytes).
+  // `Buffer` cannot be expressed as a literal (it is a class with statics), so it
+  // is redirected to a namespaced global that src/content/node-shims.ts fills in
+  // with the real implementation from the `buffer` package. The indirection is
+  // what keeps the page clean: `__ensightBuffer` is invisible to feature
+  // detection, whereas a real `window.Buffer` would read as "we are in Node" to
+  // any library on the visited page.
   define: {
     global: 'globalThis',
-    process: '({browser:true,env:{},versions:{},version:"",platform:"browser",arch:"",nextTick:(f,...a)=>Promise.resolve().then(()=>f(...a)),cwd:()=>"/"})'
+    process: '({browser:true,env:{},versions:{},version:"",platform:"browser",arch:"",nextTick:(f,...a)=>Promise.resolve().then(()=>f(...a)),cwd:()=>"/"})',
+    Buffer: 'globalThis.__ensightBuffer'
   },
   build: {
     rollupOptions: {

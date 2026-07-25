@@ -1,3 +1,5 @@
+// MAIN world: the 0G Compute SDK runs here — see node-shims.ts. Must stay the first import.
+import './node-shims';
 import { ethers } from 'ethers';
 import { CONFIG } from '../config';
 import { createZeroGBroker, type Broker } from '../services/zerog-compute';

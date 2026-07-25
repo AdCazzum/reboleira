@@ -178,6 +178,22 @@ async function main() {
     check('bridge MAIN world vivo (injected.js eseguito, non solo servito)',
       /metodo sconosciuto/.test(bridgeReply), bridgeReply);
 
+    // The 0G SDKs' browser builds reach for Node globals (global, process.browser,
+    // Buffer.from) while their modules evaluate. Each one threw in turn and killed
+    // live inference silently — the page still adapted, from a fixture, so nothing
+    // looked broken. vite.config.ts substitutes them; these two checks make sure
+    // the substitution keeps working AND keeps staying out of the page.
+    const bufferShim = await page.evaluate(() => {
+      const B = globalThis.__ensightBuffer;
+      if (!B) return 'assente';
+      try { return B.from('hi').toString('base64') === 'aGk=' ? 'ok' : 'base64 errato'; }
+      catch (e) { return String(e?.message ?? e); }
+    });
+    check('shim Buffer presente e funzionante nel MAIN world', bufferShim === 'ok', bufferShim);
+
+    const nodeMarkers = await page.evaluate(() => ['Buffer', 'process', 'global'].filter(k => k in globalThis));
+    check('nessun marcatore Node piantato nella pagina ospite', nodeMarkers.length === 0, nodeMarkers.join(', '));
+
     check('pagina non ancora adattata', (await adaptedText(page)) === null);
 
     console.log('[4/7] persona A: toggle -> UI adattata');

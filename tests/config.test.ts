@@ -8,6 +8,6 @@ describe('CONFIG', () => {
   });
 
   it('targets the 0G chain id', () => {
-    expect(CONFIG.zerogChainId).toBe(16601);
+    expect(CONFIG.zerogChainId).toBe(16602);
   });
 });

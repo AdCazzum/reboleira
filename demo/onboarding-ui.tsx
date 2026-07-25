@@ -11,7 +11,7 @@ import { useState, useEffect, useRef } from 'preact/hooks';
 import { chainLabel, shortenMiddle, guidanceFor, type PreflightIssue } from './onboarding-logic';
 import { profileToTheme, themeToCssVars } from '../src/core/theme';
 import type { PersonaProfile } from '../src/core/types';
-import { parseDomains, formatDomains } from './onboarding-logic';
+import { parseDomains, formatDomains, commitChips } from './onboarding-logic';
 
 export function MastheadMeta({ ensName, chainId, address }: {
   ensName: string;
@@ -36,17 +36,28 @@ export function MastheadMeta({ ensName, chainId, address }: {
   );
 }
 
-export function Stepper({ steps, current, furthest, busy, onSelect }: {
+export function Stepper({ steps, current, furthest, busy, finalDone, onSelect }: {
   steps: { n: number; label: string }[];
   current: number;
   furthest: number;
   busy: boolean;
+  // The last step's own "reached" state (furthest) can never distinguish
+  // "on the final step" from "actually finished" - there's no step 6 to
+  // advance to. finalDone carries the real completion signal (both ENS
+  // transactions landed) so only the last step needs it; steps 1-4 keep the
+  // existing furthest/current-based rule untouched.
+  finalDone: boolean;
   onSelect: (n: number) => void;
 }) {
+  const lastStep = steps.length > 0 ? steps[steps.length - 1].n : null;
   return (
-    <ol class="stepper">
+    <ol class="stepper" role="list">
       {steps.map(s => {
-        const state = s.n === current ? 'current' : s.n < furthest || s.n < current ? 'done' : 'todo';
+        const state = s.n === current
+          ? 'current'
+          : s.n === lastStep
+            ? (finalDone ? 'done' : 'todo')
+            : s.n < furthest || s.n < current ? 'done' : 'todo';
         // Unreachable while a step's own action is mid-flight: navigating away
         // (advance()) would otherwise yank the user elsewhere the instant a
         // pending transaction lands underneath them.
@@ -100,6 +111,7 @@ export function Artifact({ label, value, href }: { label: string; value: string;
       <button
         type="button"
         class="btn btn--quiet btn--tiny"
+        aria-label={`Copy ${label}`}
         onClick={() => {
           navigator.clipboard?.writeText(value).then(
             () => { setCopied(true); setTimeout(() => setCopied(false), 1500); },
@@ -140,7 +152,11 @@ export function LogPanel({ lines }: { lines: string[] }) {
     <details class="disclosure" id="log-disclosure">
       <summary>Technical log ({lines.length})</summary>
       <div class="disclosure__body">
-        <pre class="log" ref={pre} aria-live="polite">{lines.join('\n')}</pre>
+        {/* No aria-live here: this <pre> holds the whole joined transcript,
+            so a live region on it would re-announce every prior line on
+            every append. The log is inside a collapsed <details> anyway -
+            nothing here needs to interrupt with a running announcement. */}
+        <pre class="log" ref={pre}>{lines.join('\n')}</pre>
       </div>
     </details>
   );
@@ -237,10 +253,8 @@ export function DomainChips({ value, onChange }: { value: string; onChange: (val
   const chips = parseDomains(value);
 
   function commit(raw: string): void {
-    const next = parseDomains(raw);
     setDraft('');
-    if (next.length === 0) return;
-    onChange(formatDomains([...new Set([...chips, ...next])]));
+    onChange(commitChips(value, raw));
   }
 
   return (
@@ -312,8 +326,15 @@ export function ProfileForm({ profile, domainsInput, onProfileChange, onDomainsC
   onSubmit: (e: Event) => void;
   busy: boolean;
 }) {
+  // Derived from the profile itself on every render, not a separately-seeded
+  // local flag: a language that doesn't match any preset (including '',
+  // e.g. right after clearing the custom box) IS the custom case, so this
+  // can never drift from what the value actually is - not on remount (the
+  // old useState seed only ran once, so navigating away and back with a
+  // blank custom language silently forgot it was custom), and not while
+  // typing.
   const known = LANGUAGES.some(l => l.code === profile.language);
-  const [custom, setCustom] = useState(!known && profile.language !== '');
+  const custom = !known;
 
   function setAccessibility(key: keyof PersonaProfile['accessibility'], value: boolean): void {
     onProfileChange({ ...profile, accessibility: { ...profile.accessibility, [key]: value } });
@@ -332,9 +353,10 @@ export function ProfileForm({ profile, domainsInput, onProfileChange, onDomainsC
           value={custom ? 'other' : profile.language}
           onChange={e => {
             const v = (e.currentTarget as HTMLSelectElement).value;
-            if (v === 'other') { setCustom(true); return; }
-            setCustom(false);
-            onProfileChange({ ...profile, language: v });
+            // Blanks the language rather than leaving the previous preset
+            // code in place - the custom box below is derived from this
+            // value, so it now opens empty instead of pre-filled.
+            onProfileChange({ ...profile, language: v === 'other' ? '' : v });
           }}
         >
           {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.name} · {l.code}</option>)}
@@ -437,7 +459,7 @@ export function Summary({ ensName, recordKeys, attestation, profileUri, humanTxH
       <Artifact label="Human tx" value={humanTxHash} href={`https://sepolia.etherscan.io/tx/${humanTxHash}`} />
       <Artifact label="Profile tx" value={profileTxHash} href={`https://sepolia.etherscan.io/tx/${profileTxHash}`} />
 
-      <ul class="summary__links">
+      <ul class="summary__links" role="list">
         <li>
           <a href={`https://sepolia.app.ens.domains/${ensName}`} target="_blank" rel="noreferrer">
             See both records on the public ENS page

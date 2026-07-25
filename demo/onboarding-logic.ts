@@ -40,6 +40,25 @@ export function formatDomains(chips: string[]): string {
   return chips.join(', ');
 }
 
+/** Merges a freshly-committed chip draft (e.g. a paste or a typed
+ *  comma-separated pair, "a,a") into the existing comma-joined domains
+ *  string, deduplicating the WHOLE union - not just the new chips against
+ *  the old ones - so committing "a,a" in one go cannot itself produce two
+ *  chips that share a key. Returns the existing value unchanged (a no-op)
+ *  when the raw commit parses to nothing (empty or comma/whitespace-only).
+ *  Insertion order is preserved (existing chips first, then new ones in the
+ *  order they appeared in `raw`), and every chip is trimmed by
+ *  `parseDomains`. Stays a string in, string out: `domainsInput` (and
+ *  handleProfileNext's `split(',')` parse of it) remain the single
+ *  authority on what gets stored - DomainChips.commit() in
+ *  onboarding-ui.tsx just calls this instead of reimplementing the merge. */
+export function commitChips(existingCsv: string, raw: string): string {
+  const existing = parseDomains(existingCsv);
+  const next = parseDomains(raw);
+  if (next.length === 0) return existingCsv;
+  return formatDomains([...new Set([...existing, ...next])]);
+}
+
 function errorCode(err: unknown): string | number | undefined {
   if (typeof err !== 'object' || err === null) return undefined;
   const e = err as { code?: string | number; info?: { error?: { code?: number } } };

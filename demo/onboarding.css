@@ -179,7 +179,12 @@ a { color: var(--link); }
   padding: var(--s6);
 }
 
-.card[aria-busy="true"] { opacity: 0.75; }
+/* 0.75 dropped --muted-on-canvas text below the 4.5:1 floor once the card's
+   opacity blends it toward the page background - exactly while a
+   transaction is in flight and being read most carefully. 0.92 keeps a
+   visible dimming cue (still distinct from the 1.0 idle state) while
+   staying above 4.5:1 (~5.0:1 measured for --muted text). */
+.card[aria-busy="true"] { opacity: 0.92; }
 
 .card__title {
   font-size: var(--t-l);

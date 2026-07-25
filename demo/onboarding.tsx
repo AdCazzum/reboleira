@@ -487,7 +487,14 @@ function App() {
   return (
     <>
       <PreflightStrip issues={preflight} />
-      <Stepper steps={STEPS} current={step} furthest={furthest} busy={busy} onSelect={n => setStep(n as StepNum)} />
+      <Stepper
+        steps={STEPS}
+        current={step}
+        furthest={furthest}
+        busy={busy}
+        finalDone={Boolean(humanTxHash && profileTxHash)}
+        onSelect={n => setStep(n as StepNum)}
+      />
 
       {step === 1 && (
         <StepCard n={1} busy={busy} title="Connect your wallet"
@@ -536,14 +543,18 @@ function App() {
       {step === 3 && (
         <StepCard n={3} busy={busy} title="Describe how you read"
           why="These choices are what the AI adapts every page to. They are encrypted before they leave this page.">
-          <ProfileForm
-            profile={profile}
-            domainsInput={domainsInput}
-            onProfileChange={setProfile}
-            onDomainsChange={setDomainsInput}
-            onSubmit={handleProfileNext}
-            busy={busy}
-          />
+          {profileUri ? (
+            <ReadOnlyNote furthest={furthest} />
+          ) : (
+            <ProfileForm
+              profile={profile}
+              domainsInput={domainsInput}
+              onProfileChange={setProfile}
+              onDomainsChange={setDomainsInput}
+              onSubmit={handleProfileNext}
+              busy={busy}
+            />
+          )}
           <ErrorBlock error={errors[3]} onRetry={null} />
         </StepCard>
       )}

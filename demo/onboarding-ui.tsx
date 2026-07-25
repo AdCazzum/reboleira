@@ -33,17 +33,21 @@ export function MastheadMeta({ ensName, chainId, address }: {
   );
 }
 
-export function Stepper({ steps, current, furthest, onSelect }: {
+export function Stepper({ steps, current, furthest, busy, onSelect }: {
   steps: { n: number; label: string }[];
   current: number;
   furthest: number;
+  busy: boolean;
   onSelect: (n: number) => void;
 }) {
   return (
     <ol class="stepper">
       {steps.map(s => {
         const state = s.n === current ? 'current' : s.n < furthest || s.n < current ? 'done' : 'todo';
-        const reachable = s.n <= furthest && s.n !== current;
+        // Unreachable while a step's own action is mid-flight: navigating away
+        // (advance()) would otherwise yank the user elsewhere the instant a
+        // pending transaction lands underneath them.
+        const reachable = s.n <= furthest && s.n !== current && !busy;
         return (
           <li key={s.n} class="stepper__item" data-state={state}>
             <button
@@ -103,6 +107,21 @@ export function Artifact({ label, value, href }: { label: string; value: string;
         {copied ? 'Copied' : 'Copy'}
       </button>
     </div>
+  );
+}
+
+/** Shown in place of a step's action button when the stepper has reopened it
+ *  read-only (the user clicked back to a step behind `furthest`). Per the
+ *  plan's back-navigation rule, a revisited step re-runs nothing — it only
+ *  shows what it already produced — so its button is omitted entirely here
+ *  rather than merely disabled. No dedicated class exists for this note in
+ *  demo/onboarding.css, so it reuses `card__why` (the muted, same-size
+ *  explanatory copy already used just above it in the card). */
+export function ReadOnlyNote({ furthest }: { furthest: number }) {
+  return (
+    <p class="card__why">
+      Already done — this step won't run again. Use the stepper above to return to step {furthest}.
+    </p>
   );
 }
 

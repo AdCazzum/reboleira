@@ -116,7 +116,7 @@ import { createZeroGStorageBackend, storeProfile } from '../src/services/zerog-s
 import type { ZeroGStorageSdkLoader } from '../src/services/zerog-storage';
 import type { PersonaProfile } from '../src/core/types';
 import { SEPOLIA_CHAIN_HEX, ZEROG_CHAIN_HEX } from './onboarding-logic';
-import { MastheadMeta, Stepper, StepCard, Artifact, LogPanel, ErrorBlock, ProfileForm, Summary } from './onboarding-ui';
+import { MastheadMeta, Stepper, StepCard, Artifact, LogPanel, ErrorBlock, ProfileForm, Summary, ReadOnlyNote } from './onboarding-ui';
 
 // Narrows IDKitResult's response item union down to the variants that carry
 // `.nullifier` (V3/V4 uniqueness proofs), excluding the session variant
@@ -452,16 +452,30 @@ function App() {
     }
   }
 
+  // Back navigation is read-only: a step behind `furthest` only shows what it
+  // already produced and re-runs nothing (see the plan's "Back navigation"
+  // section). `furthest` never exceeds the current step's own number until
+  // that step's advance() fires, so this is always false for the furthest
+  // step itself - in particular, step 5 stays interactive for as long as it
+  // is the furthest step, which is exactly the case (humanTxHash set,
+  // profileTxHash still null) where the retry guard in handleWriteEns must
+  // still be reachable from a real button click.
+  const readOnly = step < furthest;
+
   return (
     <>
-      <Stepper steps={STEPS} current={step} furthest={furthest} onSelect={n => setStep(n as StepNum)} />
+      <Stepper steps={STEPS} current={step} furthest={furthest} busy={busy} onSelect={n => setStep(n as StepNum)} />
 
       {step === 1 && (
         <StepCard n={1} busy={busy} title="Connect your wallet"
           why="The same wallet signs the key that encrypts your profile and, at the end, the two ENS records that point at it.">
-          <button class="btn" onClick={handleConnect} disabled={busy}>
-            {busy ? 'Connecting…' : 'Connect wallet'}
-          </button>
+          {readOnly ? (
+            <ReadOnlyNote furthest={furthest} />
+          ) : (
+            <button class="btn" onClick={handleConnect} disabled={busy}>
+              {busy ? 'Connecting…' : 'Connect wallet'}
+            </button>
+          )}
           {address && <Artifact label="Address" value={address} />}
           <ErrorBlock error={errors[1]} onRetry={handleConnect} />
         </StepCard>
@@ -470,9 +484,13 @@ function App() {
       {step === 2 && (
         <StepCard n={2} busy={busy} title="Prove you are a person"
           why="One World ID proof, so a profile belongs to one human. No personal data leaves your device — only a nullifier, which cannot be traced back to you.">
-          <button class="btn" onClick={openWorldWidget} disabled={busy || worldOpen}>
-            Verify with World ID
-          </button>
+          {readOnly ? (
+            <ReadOnlyNote furthest={furthest} />
+          ) : (
+            <button class="btn" onClick={openWorldWidget} disabled={busy || worldOpen}>
+              Verify with World ID
+            </button>
+          )}
           {rpContext && (
             <IDKitRequestWidget
               open={worldOpen}
@@ -510,9 +528,13 @@ function App() {
       {step === 4 && (
         <StepCard n={4} busy={busy} title="Encrypt and upload"
           why={<>Your wallet signs a fixed message; that signature derives an AES-GCM key that never leaves this page. Only the ciphertext goes to 0G Storage. MetaMask will switch to 0G Galileo (chain {CONFIG.zerogChainId}) first.</>}>
-          <button class="btn" onClick={handleEncryptUpload} disabled={busy}>
-            {busy ? 'Working…' : 'Encrypt & upload'}
-          </button>
+          {readOnly ? (
+            <ReadOnlyNote furthest={furthest} />
+          ) : (
+            <button class="btn" onClick={handleEncryptUpload} disabled={busy}>
+              {busy ? 'Working…' : 'Encrypt & upload'}
+            </button>
+          )}
           {profileUri && <Artifact label="0G root hash" value={profileUri} />}
           <ErrorBlock error={errors[4]} onRetry={handleEncryptUpload} />
         </StepCard>
@@ -521,9 +543,13 @@ function App() {
       {step === 5 && !(humanTxHash && profileTxHash) && (
         <StepCard n={5} busy={busy} title="Write it to ENS"
           why={<>Two <code>setText</code> records on {CONFIG.ensName}, back on Sepolia: the attestation and the pointer. Both are public; neither reveals the profile.</>}>
-          <button class="btn" onClick={handleWriteEns} disabled={busy}>
-            {busy ? 'Working…' : 'Write ENS records'}
-          </button>
+          {readOnly ? (
+            <ReadOnlyNote furthest={furthest} />
+          ) : (
+            <button class="btn" onClick={handleWriteEns} disabled={busy}>
+              {busy ? 'Working…' : 'Write ENS records'}
+            </button>
+          )}
           {humanTxHash && <Artifact label="Human tx" value={humanTxHash} href={`https://sepolia.etherscan.io/tx/${humanTxHash}`} />}
           {profileTxHash && <Artifact label="Profile tx" value={profileTxHash} href={`https://sepolia.etherscan.io/tx/${profileTxHash}`} />}
           <ErrorBlock error={errors[5]} onRetry={handleWriteEns} />

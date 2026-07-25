@@ -1063,6 +1063,8 @@ git commit -m "feat(onboarding): shell statica, design token e harness di antepr
 - Create: `demo/onboarding-ui.tsx`
 - Modify: `demo/onboarding.tsx`
 
+**Back-navigation requirement (restated here because a task brief only carries its own section):** a step the user has navigated back to — `step < furthest` — renders **read-only**: its artifacts are shown, its action button is not rendered at all. Without this, a completed step can regenerate an artifact already committed on chain: re-running step 4 after the ENS write produces a new 0G root hash while the `app.ensight.profile` record still points at the old one, and `handleWriteEns`'s `profileTxHash` guard then refuses the re-send that would repair it. The one case that must stay interactive is step 5 with `humanTxHash` set and `profileTxHash` still null — there `step === furthest`, so it is not read-only, and the retry path that skips the already-landed first transaction keeps working.
+
 **Interfaces:**
 - Consumes: `chainLabel`, `shortenMiddle`, `SEPOLIA_CHAIN_HEX`, `ZEROG_CHAIN_HEX` from `demo/onboarding-logic.ts`; the class names from `demo/onboarding.css`.
 - Produces, from `demo/onboarding-ui.tsx`:

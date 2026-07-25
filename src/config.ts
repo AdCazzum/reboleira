@@ -12,5 +12,10 @@ export const CONFIG = {
   ensName: env.VITE_ENS_NAME as string,
   worldAppId: env.VITE_WORLD_APP_ID as string,
   worldAction: env.VITE_WORLD_ACTION as string,
+  // World ID 4.0's rp_id is NOT read here: it is only needed to assemble
+  // rp_context, which is now assembled entirely server-side by
+  // scripts/onboarding-server.mjs (WORLD_RP_ID env var, deliberately not
+  // VITE_-prefixed) and returned whole to demo/onboarding.tsx over
+  // POST /rp-context. Nothing in the browser bundle needs it.
   recordKeys: { profile: 'app.ensight.profile', human: 'app.ensight.human' }
 } as const;

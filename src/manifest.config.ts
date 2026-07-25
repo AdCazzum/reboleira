@@ -12,5 +12,8 @@ export default defineManifest({
     js: ['src/content/content-script.ts'],
     run_at: 'document_idle'
   }],
-  web_accessible_resources: [{ resources: ['src/content/injected.ts'], matches: ['<all_urls>'] }]
+  // 'src/content/injected.js' is the bundled output of src/content/injected.ts
+  // (see vite.config.ts rollupOptions.input/entryFileNames) — the .ts source itself
+  // is never web-accessible since crxjs would only copy it verbatim, unbundled.
+  web_accessible_resources: [{ resources: ['src/content/injected.js'], matches: ['<all_urls>'] }]
 });

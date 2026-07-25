@@ -7,6 +7,19 @@ import personaBJson from '../../demo/personas/persona-b.json';
 let adaptedRoot: HTMLElement | null = null;
 const originals: HTMLElement[] = [];
 
+// Inietta injected.ts nel MAIN world (fuori dal contesto ISOLATED del content
+// script) cosicché possa accedere a window.ethereum. Comunica col content
+// script via bridge.ts (window.postMessage, protocollo { source:'ensight' }).
+(function injectMainWorldScript() {
+  const s = document.createElement('script');
+  // Built path (see vite.config.ts + src/manifest.config.ts): crxjs only bundles
+  // manifest-declared entry points, so injected.ts is compiled to a stable
+  // 'src/content/injected.js' output rather than served from its .ts source.
+  s.src = chrome.runtime.getURL('src/content/injected.js');
+  s.onload = () => s.remove();
+  document.documentElement.appendChild(s);
+})();
+
 async function activePersona(): Promise<PersonaKey> {
   const { persona } = await chrome.storage.local.get('persona') as { persona?: PersonaKey };
   return persona ?? 'personaA';

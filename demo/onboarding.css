@@ -207,7 +207,7 @@ a { color: var(--link); }
   cursor: pointer;
 }
 
-.btn:hover:not(:disabled) { background: #000; }
+.btn:hover:not(:disabled) { background: var(--ink); }
 
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 

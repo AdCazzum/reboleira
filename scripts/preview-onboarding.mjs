@@ -67,10 +67,6 @@ const errors = [];
 page.on('pageerror', e => errors.push(String(e)));
 page.on('console', m => m.type() === 'error' && errors.push(m.text()));
 
-await page.addInitScript(WALLET_STUB);
-await page.goto(`${base}/onboarding.html`);
-await page.waitForSelector('.stepper', { timeout: 15_000 });
-
 const shots = [];
 async function shoot(name) {
   const file = join(outDir, `${name}.png`);
@@ -78,33 +74,50 @@ async function shoot(name) {
   shots.push(file);
 }
 
-await shoot('01-step1-connect');
+// try/finally so a thrown waitForSelector/locator failure (expected at this
+// point in the plan — see the module comment) still closes the browser and
+// the server instead of leaking a Chromium subprocess and the port.
+let failure = null;
+try {
+  await page.addInitScript(WALLET_STUB);
+  await page.goto(`${base}/onboarding.html`);
+  await page.waitForSelector('.stepper', { timeout: 15_000 });
 
-await page.getByRole('button', { name: /connect wallet/i }).click();
-await page.waitForSelector('[data-step="2"]', { timeout: 15_000 });
-await shoot('02-step2-verify');
+  await shoot('01-step1-connect');
 
-// Jump straight to step 3: step 2 needs the World ID simulator, which this
-// harness deliberately does not stand up.
-await page.evaluate(() => window.__ensightGoToStep?.(3));
-await page.waitForSelector('[data-step="3"]', { timeout: 15_000 });
-await shoot('03-step3-profile');
+  await page.getByRole('button', { name: /connect wallet/i }).click();
+  await page.waitForSelector('[data-step="2"]', { timeout: 15_000 });
+  await shoot('02-step2-verify');
 
-await page.getByRole('checkbox', { name: /larger text/i }).check();
-await page.getByRole('checkbox', { name: /dyslexia/i }).check();
-await shoot('04-step3-preview-adapted');
+  // Jump straight to step 3: step 2 needs the World ID simulator, which this
+  // harness deliberately does not stand up.
+  await page.evaluate(() => window.__ensightGoToStep?.(3));
+  await page.waitForSelector('[data-step="3"]', { timeout: 15_000 });
+  await shoot('03-step3-profile');
 
-await page.locator('#log-disclosure summary').click();
-await shoot('05-log-open');
+  await page.getByRole('checkbox', { name: /larger text/i }).check();
+  await page.getByRole('checkbox', { name: /dyslexia/i }).check();
+  await shoot('04-step3-preview-adapted');
 
-await browser.close();
-await new Promise(done => server.close(done));
+  await page.locator('#log-disclosure summary').click();
+  await shoot('05-log-open');
+} catch (e) {
+  failure = e;
+} finally {
+  await browser.close();
+  await new Promise(done => server.close(done));
+}
 
 console.log(`Screenshots written to ${outDir}:`);
 for (const s of shots) console.log(`  ${s}`);
 if (errors.length > 0) {
   console.error(`\n${errors.length} console/page error(s):`);
   for (const e of errors) console.error(`  ${e}`);
+}
+if (failure) {
+  console.error(`\nScreenshot sequence failed: ${failure}`);
+}
+if (errors.length > 0 || failure) {
   process.exit(1);
 }
 console.log('\nNo console or page errors.');

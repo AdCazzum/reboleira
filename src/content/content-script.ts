@@ -9,8 +9,8 @@ import personaAJson from '../../demo/personas/persona-a.json';
 import personaBJson from '../../demo/personas/persona-b.json';
 import { CONFIG } from '../config';
 import { readProfilePointer } from '../services/ens';
-import { createZeroGStorageBackend, loadProfile as loadProfileFromZeroG } from '../services/zerog-storage';
-import { createZeroGBroker, requestUISpec } from '../services/zerog-compute';
+import { browserSdkLoader, createZeroGStorageBackend, loadProfile as loadProfileFromZeroG } from '../services/zerog-storage';
+import { requestUISpec, type Broker } from '../services/zerog-compute';
 import { deriveKey, SIGN_MESSAGE } from '../core/crypto';
 
 let adaptedRoot: HTMLElement | null = null;
@@ -21,6 +21,13 @@ const originals: HTMLElement[] = [];
 // script via bridge.ts (window.postMessage, protocollo { source:'ensight' }).
 (function injectMainWorldScript() {
   const s = document.createElement('script');
+  // MUST be a module: the bundled injected.js imports its shared chunks
+  // (ethers, config, zerog-compute) with static `import` statements, so loading
+  // it as a classic script fails with "Cannot use import statement outside a
+  // module" and the MAIN-world message handler never registers — every
+  // callInjected() then goes unanswered. crxjs lists those chunks in
+  // web_accessible_resources, so the imports resolve from the page.
+  s.type = 'module';
   // Built path (see vite.config.ts + src/manifest.config.ts): crxjs only bundles
   // manifest-declared entry points, so injected.ts is compiled to a stable
   // 'src/content/injected.js' output rather than served from its .ts source.
@@ -63,33 +70,6 @@ async function setCachedProfile(profileUri: string, profile: PersonaProfile): Pr
   }
 }
 
-// The content script runs in the ISOLATED world: there is no window.ethereum
-// here (that only exists in the MAIN world, reachable via callInjected/bridge.ts),
-// so we cannot hold a live wallet Signer for the 0G reads below. Both
-// createZeroGStorageBackend()'s get() (download) and createZeroGBroker()'s
-// signer param structurally require `Wallet | JsonRpcSigner` (see those
-// modules' `ZeroGSigner` type) -- a bare `JsonRpcProvider` or `VoidSigner`
-// does NOT satisfy that type (verified: both fail tsc with "missing
-// properties from type Wallet" / "refers to a different private member").
-// `provider.getSigner()` returns a real `JsonRpcSigner`, so it type-checks
-// cleanly, and -- since CONFIG.zerogRpc is a public RPC endpoint with no
-// locally-managed accounts, not a wallet-backed node -- it simply rejects at
-// call time, which withFallback below catches like any other live-path
-// failure. We never construct or fabricate a private key.
-async function readOnlySigner(rpcUrl: string) {
-  return new JsonRpcProvider(rpcUrl).getSigner();
-}
-
-// No CONFIG slot exists yet for a default 0G Compute inference provider
-// address (see .env.example: scripts/try-inference.ts's PROVIDER_ADDRESS is a
-// manual, node-only env var read from process.env for a one-off script, not
-// part of the client bundle config in src/config.ts). Live inference below
-// attempts with this placeholder; the call is expected to reject in this
-// context regardless (no funded ledger/signer -- see readOnlySigner above),
-// so the exact address does not change the outcome. getSpec's fixture
-// fallback is guaranteed either way (see resolveSpec below).
-const ZEROG_INFERENCE_PROVIDER = '';
-
 async function loadLiveProfile(): Promise<PersonaProfile> {
   const sepoliaProvider = new JsonRpcProvider(CONFIG.sepoliaRpc);
   const { profileUri } = await readProfilePointer(CONFIG.ensName, sepoliaProvider);
@@ -100,8 +80,15 @@ async function loadLiveProfile(): Promise<PersonaProfile> {
 
   const sig = await callInjected<string>('personal_sign', [SIGN_MESSAGE]);
   const key = await deriveKey(sig);
-  const signer = await readOnlySigner(CONFIG.zerogRpc);
-  const backend = createZeroGStorageBackend(signer);
+  // Download-only backend: reading a blob off 0G Storage needs no signature
+  // (only uploading does), which is what makes this path viable from the
+  // ISOLATED world, where there is no window.ethereum and so no wallet signer.
+  // The `/browser` SDK build is the one demo/onboarding.tsx proved live.
+  const backend = createZeroGStorageBackend(
+    null,
+    { evmRpc: CONFIG.zerogRpc, indexerRpc: CONFIG.zerogIndexer },
+    browserSdkLoader
+  );
   const profile = await loadProfileFromZeroG(profileUri, key, backend);
 
   await setCachedProfile(profileUri, profile);
@@ -111,26 +98,63 @@ async function loadLiveProfile(): Promise<PersonaProfile> {
 // Dev/demo: import statico dei profili persona da demo/personas, usato come
 // fallback garantito quando il percorso live (ENS/0G) fallisce per qualsiasi
 // motivo (rete, firma rifiutata, nessun puntatore ancora pubblicato, ...).
+// The fallbacks are deliberately silent as far as the UI goes — the demo must
+// never break — but a silent fallback is indistinguishable from a working live
+// path, which makes "is this really reading ENS/0G?" unanswerable while
+// demoing. So each path says which one won, and why, on the page console.
 async function loadProfile(persona: PersonaKey): Promise<PersonaProfile> {
   return resolveProfile({
-    loadLiveProfile,
+    loadLiveProfile: async () => {
+      try {
+        const profile = await loadLiveProfile();
+        console.info('[ENSight] profilo: LIVE (puntatore ENS -> blob cifrato su 0G Storage)');
+        return profile;
+      } catch (err) {
+        console.warn(`[ENSight] profilo: FALLBACK a "${persona}" statica —`, err);
+        throw err;
+      }
+    },
     loadStaticProfile: async () => staticPersonaProfile(persona)
   });
 }
 
 // ---- live UISpec path (0G Compute), with a guaranteed fixture fallback ----
 
+// The 0G Compute SDK needs a real wallet Signer (it pays the provider out of
+// an on-chain ledger and signs each request's headers), and a wallet only
+// exists in the MAIN world. So the broker itself lives in injected.ts and we
+// reach it over the same postMessage bridge used for personal_sign/ens_setText:
+// this `Broker` just forwards the prompt and returns the model's raw reply.
+// buildMessages/extractJson/UISpec validation all stay here, inside
+// requestUISpec, so the untrusted page context never decides what is valid.
+const bridgeBroker: Broker = {
+  chat: (messages) => callInjected<string>('zerog_chat', [messages])
+};
+
 const requestLiveSpec: SpecProvider = async (graph, profile) => {
-  const signer = await readOnlySigner(CONFIG.zerogRpc);
-  const broker = createZeroGBroker(signer, ZEROG_INFERENCE_PROVIDER);
-  return requestUISpec(graph, profile, broker);
+  // Without a provider address there is nothing to call: fail fast so
+  // resolveSpec drops to the fixture instead of paying for a round trip to a
+  // wallet prompt that cannot succeed.
+  if (!CONFIG.zerogInferenceProvider) {
+    throw new Error('ensight: VITE_ZEROG_INFERENCE_PROVIDER non configurato, uso la fixture');
+  }
+  return requestUISpec(graph, profile, bridgeBroker);
 };
 
 async function enable() {
   const persona = await activePersona();
   const profile = await loadProfile(persona);
   const getSpec = resolveSpec({
-    requestLiveSpec,
+    requestLiveSpec: async (graph, profile) => {
+      try {
+        const spec = await requestLiveSpec(graph, profile);
+        console.info('[ENSight] UISpec: LIVE (inferenza 0G Compute)');
+        return spec;
+      } catch (err) {
+        console.warn('[ENSight] UISpec: FALLBACK alla fixture pre-calcolata —', err);
+        throw err;
+      }
+    },
     getFixtureSpec: async () => fixtureFor(location.href, persona)
   });
   adaptedRoot = await adaptPage(document, profile, getSpec);

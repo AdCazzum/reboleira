@@ -4,11 +4,14 @@
   "description": "ENSight — Chrome MV3 extension that regenerates web-page UIs personalized per user.",
   "type": "module",
   "private": true,
-  "engines": { "node": ">=20.19.0" },
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "e2e": "node scripts/e2e.mjs"
   },
   "keywords": [],
   "author": "",
@@ -18,6 +21,7 @@
     "@preact/preset-vite": "^2.10.6",
     "@types/chrome": "^0.2.2",
     "jsdom": "^29.1.1",
+    "playwright": "^1.62.0",
     "typescript": "^7.0.2",
     "vite": "^8.1.5",
     "vitest": "^4.1.10"

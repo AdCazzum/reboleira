@@ -538,7 +538,7 @@ a { color: var(--link); }
   cursor: pointer;
 }
 
-.btn:hover:not(:disabled) { background: #000; }
+.btn:hover:not(:disabled) { background: var(--ink); }
 
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
@@ -916,6 +916,14 @@ Create `scripts/preview-onboarding.mjs`:
 // harness has no business needing. It answers OPTIONS /rp-context with 204,
 // exactly as the real server does, so the page's preflight signer check
 // passes here too.
+//
+// The screenshot sequence below MUST be wrapped so that both browser.close()
+// and server.close() run on every path. This script is expected to fail while
+// the plan is mid-flight (at `.stepper` in Task 2, at the step-3 selector in
+// Task 3), so the throwing path is the normal one for now — without that
+// guarantee every verification cycle leaks a Chromium subprocess and a port.
+// A failure must still exit non-zero and print the error; it must never be
+// swallowed into a silent pass. See commit 3e49f47 for the shipped shape.
 //
 // Usage: node scripts/preview-onboarding.mjs [outDir]
 import { chromium } from 'playwright';

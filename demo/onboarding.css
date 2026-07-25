@@ -67,10 +67,25 @@ a { color: var(--link); }
 }
 
 .masthead__mark {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
   font-weight: 650;
   letter-spacing: -0.01em;
   margin-right: auto;
 }
+
+/* Il glifo è dimensionato in em, non in px, così segue il wordmark se un
+   giorno cambia corpo. flex:none perché in un contenitore flex un SVG senza
+   width intrinseca si lascia schiacciare. */
+.masthead__glyph {
+  width: 1.35em;
+  height: 1.35em;
+  flex: none;
+}
+
+.masthead__glyph .mark__lens { fill: var(--surface); stroke: var(--link); }
+.masthead__glyph .mark__pupil { fill: var(--ink); }
 
 .masthead__meta {
   display: flex;

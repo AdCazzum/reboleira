@@ -40,27 +40,10 @@
 // Example:
 //   PRIVATE_KEY=0x... SEPOLIA_RPC=https://sepolia.infura.io/v3/... \
 //     ENS_NAME=yourname.eth npx tsx scripts/try-ens.ts
-//
-// KNOWN LIMITATION (pre-existing, outside this task's file set): src/config.ts
-// reads `import.meta.env.VITE_*` unconditionally at module load time. Vite
-// (and vitest, which is Vite-powered) provides `import.meta.env`, but plain
-// Node/tsx does not — importing CONFIG (directly, or transitively via
-// src/services/ens.ts, which readProfilePointer() lives in) will throw
-// `Cannot read properties of undefined (reading 'VITE_SEPOLIA_RPC')` under
-// tsx. This is not caused by anything in this script or by the read/write
-// design above; it reproduces with `npx tsx -e "import('../src/config.ts')"`
-// alone. It is not fixable from here without either modifying src/config.ts
-// (out of scope for Task 13 — that file belongs to earlier tasks and other
-// components depend on its current shape) or adding custom Node loader
-// infrastructure (disproportionate for a manual smoke script). The env-var
-// guards below still run first and fail fast on their own; the import of
-// readProfilePointer/CONFIG is deferred (dynamic import, inside main(), after
-// the guards) so at least a missing env var is reported before this hits. A
-// minimal future fix, for whoever owns src/config.ts, would be:
-//   const env = (import.meta as any).env ?? process.env;
-//   export const CONFIG = { sepoliaRpc: env.VITE_SEPOLIA_RPC as string, ... };
 
 import { ethers } from 'ethers';
+import { readProfilePointer } from '../src/services/ens';
+import { CONFIG } from '../src/config';
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 const SEPOLIA_RPC = process.env.SEPOLIA_RPC;
@@ -101,35 +84,13 @@ async function setText(
 }
 
 async function main(): Promise<void> {
-  console.log(`[1/5] connecting to ${SEPOLIA_RPC}...`);
+  console.log(`[1/4] connecting to ${SEPOLIA_RPC}...`);
   const provider = new ethers.JsonRpcProvider(SEPOLIA_RPC);
   const wallet = new ethers.Wallet(PRIVATE_KEY as string, provider);
   console.log(`      wallet address: ${wallet.address}`);
   console.log(`      ENS name:       ${ENS_NAME}`);
 
-  // Deferred (dynamic) import: readProfilePointer lives in
-  // src/services/ens.ts, which statically imports CONFIG from
-  // src/config.ts. See the KNOWN LIMITATION note in the header comment —
-  // that import can throw under plain tsx for reasons unrelated to this
-  // script. Deferring it to here (after the env-var guards above already
-  // ran) means a missing env var is still always reported first; if this
-  // step itself fails, print a clear diagnostic instead of a raw stack trace.
-  console.log('[2/5] loading readProfilePointer()/CONFIG (src/services/ens.ts, src/config.ts)...');
-  let readProfilePointer: typeof import('../src/services/ens').readProfilePointer;
-  let CONFIG: typeof import('../src/config').CONFIG;
-  try {
-    ({ readProfilePointer } = await import('../src/services/ens'));
-    ({ CONFIG } = await import('../src/config'));
-  } catch (err) {
-    console.error('\nFAILED to load src/services/ens.ts / src/config.ts:', err instanceof Error ? err.message : err);
-    console.error('This is the KNOWN LIMITATION described in this script\'s header comment: src/config.ts reads');
-    console.error('import.meta.env.* unconditionally, which plain Node/tsx does not provide (only Vite/vitest do).');
-    console.error('See the header comment above for a minimal suggested fix to src/config.ts (out of scope here).');
-    process.exitCode = 1;
-    return;
-  }
-
-  console.log(`[3/5] resolving resolver for ${ENS_NAME}...`);
+  console.log(`[2/4] resolving resolver for ${ENS_NAME}...`);
   const resolver = await provider.getResolver(ENS_NAME as string);
   if (!resolver) {
     console.error(`FAILED: no resolver found for ${ENS_NAME}. Does this name exist on Sepolia and have a resolver set?`);
@@ -143,7 +104,7 @@ async function main(): Promise<void> {
   const testProfileUri = `mem://ensight-test-${Date.now()}`;
   const testHuman = `test-nullifier-${Date.now()}`;
 
-  console.log('[4/5] writing text records (this SPENDS Sepolia ETH)...');
+  console.log('[3/4] writing text records (this SPENDS Sepolia ETH)...');
   console.log(`      writing ${CONFIG.recordKeys.human} = ${testHuman}`);
   const humanTxHash = await setText(wallet, resolver.address, node, CONFIG.recordKeys.human, testHuman);
   console.log(`      txHash: ${humanTxHash}`);
@@ -152,7 +113,7 @@ async function main(): Promise<void> {
   const profileTxHash = await setText(wallet, resolver.address, node, CONFIG.recordKeys.profile, testProfileUri);
   console.log(`      txHash: ${profileTxHash}`);
 
-  console.log('[5/5] re-reading text records via readProfilePointer()...');
+  console.log('[4/4] re-reading text records via readProfilePointer()...');
   const result = await readProfilePointer(ENS_NAME as string, provider);
   console.log(`      profileUri: ${result.profileUri}`);
   console.log(`      human:      ${result.human}`);

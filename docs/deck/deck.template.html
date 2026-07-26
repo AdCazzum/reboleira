@@ -1,0 +1,1052 @@
+<title>Reboleira — one page, many people</title>
+
+<!--
+  Reboleira pitch deck for a non-technical audience.
+
+  NAMING: the product is Reboleira. "ENSight" was the working name and is still
+  what the codebase, the README and the two wizard screenshots say — so the
+  deck says Reboleira in its own voice, while anything quoted verbatim keeps
+  the string that really exists. That includes the ENS record keys
+  `app.ensight.profile` and `app.ensight.human`, which are published on Sepolia
+  under those exact names: renaming them here would put a value on the slide
+  that nobody could look up.
+
+  Source of truth: this template. `node scripts/build-deck.mjs` inlines the
+  screenshots from deck-preview/ + demo-preview/ and the woff2 files in
+  docs/deck/fonts/ as data URIs (the artifact CSP blocks every external
+  request, and a font CDN that silently fails would drop the whole deck to a
+  system fallback). Never edit index.html — it is generated, and most of it is
+  base64.
+
+  TYPE CARRIES THE ARGUMENT, so the three faces are not interchangeable:
+
+    Newsreader (serif)  — the words a person reads: headlines, statements,
+                          the rewritten-article samples. It is a face designed
+                          for reading on screens, which is what this is about.
+    IBM Plex Sans       — the interface talking about those words: labels,
+                          captions, card titles, tables, navigation.
+    IBM Plex Mono       — literal on-chain values ONLY: ENS names, record
+                          keys, chain ids, addresses. This rule is inherited
+                          from demo/onboarding.css, where it also holds. Not
+                          even the URLs in the mock browser chrome get it.
+
+  THE MARK is a metro sign — a red shield with a white M — because Reboleira is
+  a station on Lisbon's blue line. It is drawn here, original: Metropolitano de
+  Lisboa's own logo is a registered trademark and putting it on this deck would
+  claim an affiliation that does not exist. Same reason the deck's accent stays
+  the blue of the line the station sits on rather than the operator's red,
+  which is used for the mark alone. It is defined once as an SVG <symbol> and
+  referenced with <use>, so the two lockups cannot drift apart.
+
+  Colour and spacing tokens come from demo/onboarding.css too, so the deck and
+  the product read as the same object. The four dark slides (1, 6, 8, 13) are
+  the deck's spine: opening claim, the safety guarantee, the partner chapter,
+  the close. They redefine the tokens locally rather than restyling
+  components, so everything inside them keeps working untouched.
+-->
+
+<style>
+  /* Latin subsets only; each FONT placeholder below becomes a data: URI at build. */
+  @font-face {
+    font-family: "Newsreader";
+    src: url({{FONT:newsreader}}) format("woff2");
+    font-weight: 400 700; font-style: normal; font-display: block;
+  }
+  @font-face {
+    font-family: "Plex Sans";
+    src: url({{FONT:plex-sans}}) format("woff2");
+    font-weight: 400 600; font-style: normal; font-display: block;
+  }
+  @font-face {
+    font-family: "Plex Mono";
+    src: url({{FONT:plex-mono}}) format("woff2");
+    font-weight: 400; font-style: normal; font-display: block;
+  }
+
+  :root {
+    /* Neutrals biased cool, toward the accent — a flat grey reads unchosen. */
+    --canvas: #f5f6f8;
+    --surface: #ffffff;
+    --stage: #e9ecf2;
+    --ink: #12151b;
+    --muted: #5a6270;
+    --hairline: #dee2e9;
+    --accent: #0b57d0;
+    --accent-soft: #e6edfc;
+    --ok: #137333;
+    --ok-soft: #e3efe7;
+    --warn: #8a6100;
+    --warn-soft: #fbf3df;
+    --glow: transparent;
+    --shadow: 0 1px 2px rgba(18, 21, 27, .05), 0 10px 24px rgba(18, 21, 27, .06), 0 32px 60px rgba(18, 21, 27, .05);
+
+    /* The mark's red is its own; it is deliberately not the deck's accent, so
+       it never turns up as a UI colour. */
+    --brand: #e0392c;
+
+    --serif: "Newsreader", ui-serif, Georgia, serif;
+    --sans: "Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: "Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --dys: "Comic Neue", "Comic Sans MS", "Chalkboard SE", cursive;
+
+    --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px;
+    --s6: 32px; --s7: 48px; --s8: 72px;
+
+    --col: 1200px;
+    --radius: 12px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --canvas: #0d0f13;
+      --surface: #15181e;
+      --stage: #101318;
+      --ink: #e9edf3;
+      --muted: #98a1b0;
+      --hairline: #272d37;
+      --accent: #86aefc;
+      --accent-soft: #14203a;
+      --ok: #6cc48a;
+      --ok-soft: #11251a;
+      --warn: #e0b95e;
+      --warn-soft: #241e11;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .55), 0 12px 28px rgba(0, 0, 0, .45), 0 36px 64px rgba(0, 0, 0, .35);
+    }
+  }
+
+  /* The viewer's own toggle stamps data-theme on the root and must beat the
+     media query in both directions. */
+  :root[data-theme="light"] {
+    --canvas: #f5f6f8; --surface: #ffffff; --stage: #e9ecf2;
+    --ink: #12151b; --muted: #5a6270; --hairline: #dee2e9;
+    --accent: #0b57d0; --accent-soft: #e6edfc;
+    --ok: #137333; --ok-soft: #e3efe7; --warn: #8a6100; --warn-soft: #fbf3df;
+    --shadow: 0 1px 2px rgba(18, 21, 27, .05), 0 10px 24px rgba(18, 21, 27, .06), 0 32px 60px rgba(18, 21, 27, .05);
+  }
+  :root[data-theme="dark"] {
+    --canvas: #0d0f13; --surface: #15181e; --stage: #101318;
+    --ink: #e9edf3; --muted: #98a1b0; --hairline: #272d37;
+    --accent: #86aefc; --accent-soft: #14203a;
+    --ok: #6cc48a; --ok-soft: #11251a; --warn: #e0b95e; --warn-soft: #241e11;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .55), 0 12px 28px rgba(0, 0, 0, .45), 0 36px 64px rgba(0, 0, 0, .35);
+  }
+
+  * { box-sizing: border-box; }
+
+  html {
+    scroll-snap-type: y proximity;
+    scroll-behavior: smooth;
+    background: var(--canvas);
+  }
+
+  body {
+    margin: 0;
+    background: var(--canvas);
+    color: var(--ink);
+    font: 400 16.5px/1.6 var(--sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .rise { opacity: 1 !important; transform: none !important; }
+  }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  /* ---------- deck chrome ---------- */
+
+  .rail {
+    position: fixed; inset: 0 0 auto 0; z-index: 20;
+    display: flex; gap: 2px; padding: 6px 8px;
+  }
+  /* Fixed chrome sits over both light and ink slides, so the unfilled ticks
+     are a translucent neutral rather than a themed hairline — a light hairline
+     reads as a row of bright dashes on the dark slides. */
+  .rail i {
+    flex: 1; height: 2px; border-radius: 2px;
+    background: rgba(125, 136, 156, .32);
+    transition: background .3s ease;
+  }
+  .rail i.on { background: var(--accent); }
+
+  .counter {
+    position: fixed; right: var(--s5); bottom: var(--s5); z-index: 20;
+    display: flex; align-items: center; gap: var(--s3);
+    padding: 7px 8px 7px 14px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--hairline);
+    box-shadow: var(--shadow);
+    font-size: 12px; letter-spacing: .04em; color: var(--muted);
+  }
+  .counter__chapter { text-transform: uppercase; font-weight: 600; letter-spacing: .12em; font-size: 10.5px; }
+  .counter__n { font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 500; }
+  .counter__btns { display: flex; gap: 2px; }
+  .counter button {
+    all: unset; cursor: pointer; width: 24px; height: 24px; border-radius: 50%;
+    display: grid; place-items: center; color: var(--muted); font-size: 13px;
+  }
+  .counter button:hover { color: var(--ink); background: var(--accent-soft); }
+
+  /* ---------- slide skeleton ---------- */
+
+  .slide {
+    position: relative; overflow: hidden;
+    scroll-snap-align: start;
+    min-height: 100svh;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: var(--s8) var(--s7);
+    background: var(--canvas);
+    border-bottom: 1px solid var(--hairline);
+  }
+  .slide > * { position: relative; z-index: 1; width: 100%; max-width: var(--col); margin-inline: auto; }
+
+  /* Statement slides: same components, different ground. */
+  .slide--ink {
+    --canvas: #0a1020;
+    --surface: rgba(255, 255, 255, .05);
+    --stage: rgba(255, 255, 255, .04);
+    --ink: #f1f4fa;
+    --muted: #9dabc4;
+    --hairline: rgba(255, 255, 255, .13);
+    --accent: #93b7ff;
+    --accent-soft: rgba(147, 183, 255, .13);
+    --ok: #7fd39c; --ok-soft: rgba(127, 211, 156, .14);
+    --warn: #e8c274; --warn-soft: rgba(232, 194, 116, .14);
+    --shadow: 0 20px 50px rgba(0, 0, 0, .45);
+    color: var(--ink);
+    border-bottom-color: transparent;
+  }
+  /* Ambient lens light — the mark is a lens, so the dark slides are lit like one. */
+  .slide--ink::before {
+    content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(58% 46% at 82% 14%, rgba(147, 183, 255, .20), transparent 68%),
+      radial-gradient(42% 38% at 8% 92%, rgba(120, 160, 255, .13), transparent 70%);
+  }
+
+  .eyebrow {
+    display: flex; align-items: center; gap: var(--s3);
+    font-family: var(--sans);
+    font-size: 11px; font-weight: 600; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent);
+    margin: 0 0 var(--s5);
+  }
+  .eyebrow::before {
+    content: ""; width: 26px; height: 1px; flex: none;
+    background: currentColor; opacity: .55;
+  }
+
+  h1, h2 {
+    margin: 0; font-family: var(--serif); font-weight: 500;
+    text-wrap: balance; letter-spacing: -0.018em;
+  }
+  h1 { font-size: clamp(42px, 6.2vw, 76px); line-height: 1.02; font-variation-settings: "opsz" 72; }
+  h2 { font-size: clamp(30px, 3.9vw, 47px); line-height: 1.1; font-variation-settings: "opsz" 48; }
+  h3 {
+    margin: 0; font-family: var(--sans); font-weight: 600; font-size: 18px;
+    line-height: 1.3; letter-spacing: -0.005em; text-wrap: balance;
+  }
+
+  .lead {
+    font-size: clamp(17.5px, 1.8vw, 21px); line-height: 1.55;
+    color: var(--muted); max-width: 60ch;
+  }
+  .slide h1 + .lead, .slide h2 + .lead { margin-top: var(--s5); }
+
+  p { margin: 0; }
+  em { font-style: italic; }
+  .stack { display: flex; flex-direction: column; gap: var(--s5); }
+  .stack--tight { gap: var(--s4); }
+
+  .note { font-size: 14.5px; line-height: 1.6; color: var(--muted); max-width: 76ch; }
+
+  /* On-chain literals only. */
+  code {
+    font-family: var(--mono); font-size: .84em; letter-spacing: -0.01em;
+    padding: 1px 5px; border-radius: 4px;
+    background: var(--accent-soft); color: var(--accent);
+  }
+
+  /* ---------- title slide ---------- */
+
+  .title { display: flex; flex-direction: column; gap: var(--s6); }
+  .brand {
+    display: flex; align-items: center; gap: var(--s3);
+    font-family: var(--sans); font-weight: 600; font-size: 17px; letter-spacing: .01em;
+  }
+  .brand .mark { flex: none; }
+  .mark__shield { fill: var(--brand); }
+  .mark__letter { fill: #ffffff; }
+
+  .twin {
+    display: grid; gap: 0;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    border: 1px solid var(--hairline); border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .twin__cell {
+    display: flex; flex-direction: column; gap: var(--s3);
+    padding: var(--s5) var(--s6);
+    background: var(--surface);
+  }
+  .twin__cell + .twin__cell { border-left: 1px solid var(--hairline); }
+  .twin__label {
+    font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); font-weight: 600;
+  }
+  .twin__a { font-family: var(--dys); font-size: 21px; line-height: 1.7; }
+  .twin__b { font-family: var(--serif); font-size: 17px; line-height: 1.5; font-variation-settings: "opsz" 16; }
+
+  .meta {
+    display: flex; flex-wrap: wrap; gap: var(--s2) var(--s5);
+    font-size: 13px; color: var(--muted); letter-spacing: .01em;
+  }
+  .meta span { display: flex; align-items: center; gap: var(--s2); }
+  .meta span + span::before {
+    content: ""; width: 3px; height: 3px; border-radius: 50%;
+    background: currentColor; opacity: .5; flex: none;
+  }
+
+  /* ---------- screenshots ---------- */
+
+  .stage {
+    padding: var(--s5);
+    border-radius: 16px;
+    background: var(--stage);
+    box-shadow: inset 0 0 0 1px var(--hairline);
+  }
+  .shots { display: grid; gap: var(--s5); grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .shots--pair { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+
+  figure.shot { margin: 0; display: flex; flex-direction: column; gap: var(--s4); min-width: 0; }
+  .shot__frame {
+    border-radius: 9px; background: #ffffff;
+    box-shadow: var(--shadow), 0 0 0 1px rgba(18, 21, 27, .08);
+    overflow: hidden;
+  }
+  .shot__bar {
+    display: flex; align-items: center; gap: var(--s3);
+    padding: 8px 11px; background: #f1f3f6;
+    border-bottom: 1px solid rgba(18, 21, 27, .07);
+  }
+  .shot__dots { display: flex; gap: 5px; flex: none; }
+  .shot__dots i { width: 7px; height: 7px; border-radius: 50%; background: #d3d8e0; display: block; }
+  .shot__url {
+    font-size: 10.5px; color: #6b7280; letter-spacing: .02em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .shot__frame img { display: block; width: 100%; height: auto; }
+  /* Full-page captures: on a slide only the top of each carries the argument,
+     so crop rather than shrink the type into illegibility. */
+  .shot--tall .shot__frame img { max-height: 44svh; object-fit: cover; object-position: top; }
+
+  figcaption { display: flex; flex-direction: column; gap: 3px; }
+  figcaption b {
+    font-family: var(--sans); font-size: 14.5px; font-weight: 600;
+    color: var(--ink); letter-spacing: -0.005em;
+  }
+  figcaption span { font-size: 13.5px; line-height: 1.45; color: var(--muted); }
+
+  /* Onboarding: two portrait wizard captures plus the remaining three steps. */
+  .onboarding { display: grid; gap: var(--s5); grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .shot--wizard .shot__frame img { max-height: 33svh; object-fit: cover; object-position: top; }
+  .onboarding__rest { display: flex; flex-direction: column; gap: var(--s3); }
+  .onboarding__rest .flow__step { flex: 1; }
+
+  /* ---------- cards ---------- */
+
+  .cards { display: grid; gap: var(--s4); grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); }
+
+  .card {
+    display: flex; flex-direction: column; gap: var(--s3);
+    padding: var(--s5) var(--s5) var(--s6);
+    border-radius: var(--radius);
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+  }
+  .card__kicker {
+    font-size: 10.5px; font-weight: 600; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .card p { font-size: 14.5px; line-height: 1.6; color: var(--muted); }
+  .card p b { color: var(--ink); font-weight: 600; }
+  .card > .pill { margin-top: auto; align-self: flex-start; }
+
+  .card--partner { gap: var(--s5); }
+  .partner__name { display: flex; flex-direction: column; gap: 2px; }
+  .partner__name h3 {
+    font-family: var(--serif); font-weight: 500; font-size: 30px;
+    letter-spacing: -0.015em; font-variation-settings: "opsz" 32;
+  }
+  .partner__role { font-size: 12.5px; color: var(--accent); font-weight: 500; letter-spacing: .02em; }
+
+  dl.spec { margin: 0; display: flex; flex-direction: column; gap: var(--s4); }
+  dl.spec > div { display: flex; flex-direction: column; gap: 3px; }
+  dl.spec dt {
+    font-size: 10.5px; font-weight: 600; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  dl.spec dd { margin: 0; font-size: 14.5px; line-height: 1.55; }
+  dl.spec dd b { font-weight: 600; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px;
+    font-size: 11.5px; font-weight: 500; letter-spacing: .01em;
+    background: var(--ok-soft); color: var(--ok);
+  }
+  .pill::before {
+    content: ""; width: 5px; height: 5px; border-radius: 50%;
+    background: currentColor; flex: none;
+  }
+  .pill--warn { background: var(--warn-soft); color: var(--warn); }
+
+  /* ---------- flow ---------- */
+
+  .flow { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+  .flow__step {
+    display: flex; flex-direction: column; gap: var(--s2);
+    padding: var(--s4) var(--s5) var(--s5);
+    border-radius: var(--radius);
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+  }
+  .flow__n {
+    font-family: var(--serif); font-size: 22px; font-weight: 500;
+    color: var(--accent); font-variant-numeric: lining-nums;
+    line-height: 1; margin-bottom: var(--s1);
+  }
+  .flow__step h3 { font-size: 15.5px; }
+  .flow__step p { font-size: 13.5px; line-height: 1.55; color: var(--muted); }
+
+  /* ---------- table ---------- */
+
+  .tablewrap {
+    overflow-x: auto; border-radius: var(--radius);
+    border: 1px solid var(--hairline); background: var(--surface);
+  }
+  table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 14.5px; }
+  th, td { text-align: left; padding: var(--s4) var(--s5); border-bottom: 1px solid var(--hairline); vertical-align: top; }
+  thead th {
+    font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); font-weight: 600;
+  }
+  tbody td { line-height: 1.55; color: var(--muted); }
+  tbody td:first-child {
+    color: var(--ink); font-family: var(--serif); font-size: 19px;
+    font-weight: 500; letter-spacing: -0.01em; white-space: nowrap;
+    padding-top: 18px;
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink); }
+
+  ul.plain { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--s4); }
+  ul.plain li {
+    position: relative; padding-left: var(--s5);
+    font-size: 15.5px; line-height: 1.6; color: var(--muted);
+  }
+  ul.plain li::before {
+    content: ""; position: absolute; left: 0; top: .62em;
+    width: 7px; height: 7px; border-radius: 50%;
+    border: 1.5px solid var(--accent);
+  }
+  ul.plain li b { color: var(--ink); font-weight: 600; }
+
+  .split { display: grid; gap: var(--s7); grid-template-columns: 1fr; align-items: start; }
+  @media (min-width: 900px) { .split { grid-template-columns: 1.05fr 1fr; } }
+
+  .callout {
+    padding: var(--s5) var(--s6);
+    border-radius: var(--radius);
+    background: var(--accent-soft);
+    font-family: var(--serif); font-size: clamp(17px, 1.6vw, 20px); line-height: 1.5;
+    font-variation-settings: "opsz" 20;
+  }
+  .callout b { font-weight: 600; }
+
+  /* ---------- entrance ---------- */
+
+  .rise { opacity: 0; transform: translateY(14px); }
+  .slide.is-visible .rise {
+    opacity: 1; transform: none;
+    transition: opacity .55s cubic-bezier(.22, .61, .36, 1), transform .55s cubic-bezier(.22, .61, .36, 1);
+  }
+  .slide.is-visible .rise:nth-child(2) { transition-delay: .06s; }
+  .slide.is-visible .rise:nth-child(3) { transition-delay: .12s; }
+  .slide.is-visible .rise:nth-child(4) { transition-delay: .18s; }
+  .slide.is-visible .rise:nth-child(5) { transition-delay: .24s; }
+
+  /* ---------- narrow ---------- */
+
+  @media (max-width: 860px) {
+    .slide { padding: var(--s7) var(--s5); }
+  }
+  @media (max-width: 640px) {
+    html { scroll-snap-type: none; }
+    .slide { padding: var(--s7) var(--s4); min-height: auto; }
+    .counter { display: none; }
+    .stage { padding: var(--s4); border-radius: 12px; }
+    .twin__cell + .twin__cell { border-left: 0; border-top: 1px solid var(--hairline); }
+  }
+
+  /* ---------- print / PDF ----------
+     One slide per page at 1280x720 (13.333in x 7.5in at 96dpi — the widescreen
+     slide size Keynote and PowerPoint use), which is also what
+     scripts/export-deck-pdf.mjs asks Chromium for. The dark slides stay dark:
+     this deck is exported to be presented from, not printed on paper, and
+     flipping them to white would throw away half the design. */
+  @media print {
+    @page { size: 1280px 720px; margin: 0; }
+
+    html { scroll-snap-type: none; }
+    body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+
+    .slide {
+      height: 720px; min-height: 0;
+      padding: 36px 56px;
+      overflow: hidden;
+      border-bottom: 0;
+      break-after: page; break-inside: avoid;
+    }
+    .slide:last-child { break-after: auto; }
+
+    /* A page box is 720px tall where the screen had a whole window, and four
+       slides did not fit — they were being clipped by the overflow:hidden
+       above without anything failing. Everything below buys back those pixels;
+       scripts/export-deck-pdf.mjs measures each slide and shouts if one grows
+       past the box again. */
+    .stack { gap: 20px; }
+    .title { gap: 24px; }
+    h1 { font-size: 58px; }
+    h2 { font-size: 38px; }
+    .lead { font-size: 19px; }
+    .slide h1 + .lead, .slide h2 + .lead { margin-top: 18px; }
+    .twin__cell { padding: 18px 24px; }
+    .twin__a { font-size: 19px; line-height: 1.55; }
+    ul.plain { gap: 14px; }
+    .callout { padding: 20px 26px; font-size: 18px; }
+    th, td { padding: 11px 20px; }
+    tbody td:first-child { font-size: 17px; padding-top: 13px; }
+    .card { padding: 20px 20px 24px; }
+    .flow__step { padding: 14px 18px 18px; }
+    .stage { padding: 14px; }
+    .shots { gap: 18px; }
+    /* The onboarding slide is the tightest of the thirteen: its right-hand
+       column stacks three cards next to the screenshots, so it is that column,
+       not the images, that sets the height. */
+    .onboarding { gap: 18px; }
+    .onboarding__rest { gap: 10px; }
+    .onboarding__rest .flow__step { padding: 12px 16px 14px; }
+
+    /* svh has no useful meaning in paged media, so the screenshot caps become
+       the page-relative pixels they were standing in for. */
+    .shot--tall .shot__frame img { max-height: 268px; }
+    /* The wizard captures can stay tall — the three cards beside them are what
+       sets that row's height, so cropping these any harder buys no space and
+       costs the "Connect wallet" button, which is the whole point of the shot. */
+    .shot--wizard .shot__frame img { max-height: 250px; }
+
+    .rail, .counter { display: none; }
+    /* Nothing scrolls into view in a PDF, so the entrance state must not be
+       the state that gets printed. */
+    .rise { opacity: 1; transform: none; }
+  }
+</style>
+
+<!-- The mark, defined once. Geometry sits on even units of a 32 grid so the
+     strokes stay whole pixels when it is drawn small; the diagonals of the M
+     are parallel, offset by exactly one stroke width. -->
+<svg width="0" height="0" style="position: absolute" aria-hidden="true" focusable="false">
+  <symbol id="mark" viewBox="0 0 32 32">
+    <rect class="mark__shield" x="2" y="2" width="28" height="28" rx="4" />
+    <path class="mark__letter" d="M6 26V10l10 10 10-10v16h-4v-8l-6 6-6-6v8z" />
+  </symbol>
+</svg>
+
+<div class="rail" id="rail" aria-hidden="true"></div>
+
+<nav class="counter" aria-label="Slide navigation">
+  <span class="counter__chapter" id="chapter">Opening</span>
+  <span class="counter__n"><span id="cur">01</span> / <span id="total">13</span></span>
+  <span class="counter__btns">
+    <button type="button" id="prev" aria-label="Previous slide">&larr;</button>
+    <button type="button" id="next" aria-label="Next slide">&rarr;</button>
+  </span>
+</nav>
+
+<main>
+
+<!-- 1 ................................................................. -->
+<section class="slide slide--ink" data-chapter="Opening">
+  <div class="title">
+    <div class="brand rise">
+      <svg class="mark" width="30" height="30" role="img" aria-label="Reboleira"><use href="#mark" /></svg>
+      Reboleira
+    </div>
+
+    <h1 class="rise">One page. Different people.<br />Different interfaces.</h1>
+
+    <p class="lead rise">A browser extension that rebuilds any website around the person reading it &mdash; their language, their reading level, their accessibility needs &mdash; from a profile they own.</p>
+
+    <div class="twin rise">
+      <div class="twin__cell">
+        <span class="twin__label">Read by someone with dyslexia</span>
+        <span class="twin__a">The port of Genoa moved twice as many containers this year.</span>
+      </div>
+      <div class="twin__cell">
+        <span class="twin__label">Read by a logistics analyst</span>
+        <span class="twin__b">Genoa Port container throughput doubled YoY in H1 2026, driven by the Sech terminal expansion and new Asian carrier agreements.</span>
+      </div>
+    </div>
+
+    <div class="rise" style="display: flex; flex-direction: column; gap: var(--s5);">
+      <p class="note">Same article. Same URL. Nothing changed except who is looking at it. Both versions above are the kind of output the product actually produces &mdash; the left one is even set in the dyslexia-friendly typeface it selects.</p>
+      <div class="meta">
+        <span>Chrome extension</span>
+        <span>Built at ETH Global Lisbon 2026</span>
+        <span>ENS &middot; 0G &middot; World ID</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 2 ................................................................. -->
+<section class="slide" data-chapter="The problem">
+  <div class="stack">
+    <p class="eyebrow rise">The problem</p>
+    <h2 class="rise">The web ships one interface and hopes it fits everybody.</h2>
+    <div class="split rise">
+      <ul class="plain">
+        <li><b>It doesn't fit.</b> Roughly one adult in ten reads with dyslexia. Many more have low vision, limited attention, or are simply reading in their second language.</li>
+        <li><b>Accessibility settings are per-site.</b> Every site you use asks you to configure it again &mdash; if it offers anything at all. Most offer nothing.</li>
+        <li><b>Nobody wants to declare a disability to 400 websites.</b> The moment your needs live in someone else's user database, you've handed over sensitive information for a font size.</li>
+      </ul>
+      <div class="callout">
+        <b>The fix people actually want:</b> say once how you read, and have every page respect it &mdash; without that statement becoming a record on somebody's server.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 ................................................................. -->
+<section class="slide" data-chapter="What we built">
+  <div class="stack">
+    <p class="eyebrow rise">What we built</p>
+    <h2 class="rise">An extension that regenerates the page for you.</h2>
+    <p class="lead rise">You describe once how you read. That profile is encrypted and published under your own web3 name. From then on, one click on any page hands you a version built for you.</p>
+    <div class="cards rise">
+      <div class="card">
+        <span class="card__kicker">Step one, once</span>
+        <h3>Publish your profile</h3>
+        <p>Language, reading level, tone, accessibility needs. Encrypted in your browser before it goes anywhere.</p>
+      </div>
+      <div class="card">
+        <span class="card__kicker">Then, on any page</span>
+        <h3>Click adapt</h3>
+        <p>The extension reads the page's real content and asks an AI to lay it out the way <b>you</b> read.</p>
+      </div>
+      <div class="card">
+        <span class="card__kicker">Always available</span>
+        <h3>Switch back anytime</h3>
+        <p>The original page is untouched underneath. The same toggle returns it instantly.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4 ................................................................. -->
+<section class="slide" data-chapter="The demo">
+  <div class="stack">
+    <p class="eyebrow rise">The demo &mdash; the whole pitch in one image</p>
+    <h2 class="rise">Same page. Two people. Two interfaces.</h2>
+    <div class="stage rise">
+      <div class="shots">
+        <figure class="shot shot--tall">
+          <div class="shot__frame">
+            <div class="shot__bar"><span class="shot__dots"><i></i><i></i><i></i></span><span class="shot__url">page-a-news.html</span></div>
+            <img src="{{IMG:10-news-original}}" alt="The original news article page: red promo banner, dark navigation bar, dense body text and a sidebar of related links." />
+          </div>
+          <figcaption><b>The page as shipped</b><span>Promo banner, navigation, sidebar, small dense text.</span></figcaption>
+        </figure>
+        <figure class="shot shot--tall">
+          <div class="shot__frame">
+            <div class="shot__bar"><span class="shot__dots"><i></i><i></i><i></i></span><span class="shot__url">page-a-news.html</span></div>
+            <img src="{{IMG:11-news-persona-a}}" alt="The same article rebuilt for a reader with dyslexia: large rounded typeface, short simplified sentences, a summary first, no banner or sidebar." />
+          </div>
+          <figcaption><b>Reader with dyslexia</b><span>Summary first, plain short sentences, dyslexia-friendly type, banner and sidebar gone.</span></figcaption>
+        </figure>
+        <figure class="shot shot--tall">
+          <div class="shot__frame">
+            <div class="shot__bar"><span class="shot__dots"><i></i><i></i><i></i></span><span class="shot__url">page-a-news.html</span></div>
+            <img src="{{IMG:12-news-persona-b}}" alt="The same article rebuilt for an expert reader: dense English prose, high contrast, technical sections on investment, labour and next steps." />
+          </div>
+          <figcaption><b>Expert reader, English</b><span>Denser, technical, high contrast, translated, keeps the numbers.</span></figcaption>
+        </figure>
+      </div>
+    </div>
+    <p class="note rise">No reload. No second version of the site. The publisher does nothing and changes nothing.</p>
+  </div>
+</section>
+
+<!-- 5 ................................................................. -->
+<section class="slide" data-chapter="The demo">
+  <div class="stack">
+    <p class="eyebrow rise">And it isn't a news-page trick</p>
+    <h2 class="rise">The same thing happens on a product page.</h2>
+    <div class="stage rise">
+      <div class="shots shots--pair">
+        <figure class="shot shot--tall">
+          <div class="shot__frame">
+            <div class="shot__bar"><span class="shot__dots"><i></i><i></i><i></i></span><span class="shot__url">page-b-product.html</span></div>
+            <img src="{{IMG:20-product-original}}" alt="A product page for a security key, with navigation, specification table and marketing copy." />
+          </div>
+          <figcaption><b>Before</b><span>A spec sheet written for people who already know what FIDO2 is.</span></figcaption>
+        </figure>
+        <figure class="shot shot--tall">
+          <div class="shot__frame">
+            <div class="shot__bar"><span class="shot__dots"><i></i><i></i><i></i></span><span class="shot__url">page-b-product.html</span></div>
+            <img src="{{IMG:21-product-persona-a}}" alt="The same product page rebuilt in plain language: what the device is, what it is for, three short bullet points, and one clear add-to-cart button." />
+          </div>
+          <figcaption><b>After</b><span>What it is, what it's for, three things that matter, one clear button.</span></figcaption>
+        </figure>
+      </div>
+    </div>
+    <p class="note rise">The buy button still adds the same item to the same cart. It is the page's own button, not a copy of it &mdash; see the next slide.</p>
+  </div>
+</section>
+
+<!-- 6 ................................................................. -->
+<section class="slide slide--ink" data-chapter="The guarantee">
+  <div class="stack">
+    <p class="eyebrow rise">The part that makes it safe to ship</p>
+    <h2 class="rise">The AI may rewrite the words. It can never invent where a click goes.</h2>
+    <div class="split rise">
+      <div class="stack stack--tight">
+        <p class="lead">This is the difference between a demo and something you'd let a bank customer use.</p>
+        <ul class="plain">
+          <li><b>Every link and button is the real one.</b> The regenerated interface points back at the actual elements of the original page; clicking "Add to cart" fires the site's own button.</li>
+          <li><b>Made-up destinations are rejected, not trusted.</b> If the AI invents a link with no counterpart on the page, the result is thrown away before anything is drawn &mdash; a check in code, not a polite instruction in a prompt.</li>
+          <li><b>The original page is never modified.</b> The adapted view is drawn in a sealed layer on top and removed when you toggle back.</li>
+        </ul>
+      </div>
+      <div class="callout">
+        <b>Why it matters commercially:</b> a personalisation layer that can hallucinate a checkout link is unshippable. Ours structurally cannot &mdash; the worst case is that a block is dropped, never that a click goes somewhere the page never offered.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 ................................................................. -->
+<section class="slide" data-chapter="How it works">
+  <div class="stack">
+    <p class="eyebrow rise">Where the profile lives</p>
+    <h2 class="rise">Nobody holds your profile. Not even us.</h2>
+    <p class="lead rise">This is the whole journey of a profile &mdash; and it is also the answer to "what did each partner actually do".</p>
+    <div class="flow rise">
+      <div class="flow__step">
+        <span class="flow__n">1</span>
+        <h3>You fill in a form</h3>
+        <p>How you read. It never leaves the browser as plain text.</p>
+      </div>
+      <div class="flow__step">
+        <span class="flow__n">2</span>
+        <h3>Your wallet locks it</h3>
+        <p>A signature from your wallet derives the encryption key. Only you can unlock it.</p>
+      </div>
+      <div class="flow__step">
+        <span class="flow__n">3</span>
+        <h3>0G stores the sealed file</h3>
+        <p>The encrypted profile goes to 0G Storage. What's stored is unreadable without your signature.</p>
+      </div>
+      <div class="flow__step">
+        <span class="flow__n">4</span>
+        <h3>ENS points at it</h3>
+        <p>Your own name &mdash; <code>reboleira.eth</code> &mdash; carries a pointer to the file and a flag that a real human is behind it.</p>
+      </div>
+      <div class="flow__step">
+        <span class="flow__n">5</span>
+        <h3>0G Compute builds the page</h3>
+        <p>Profile plus page content go into a sealed environment. Out comes your interface.</p>
+      </div>
+    </div>
+    <p class="note rise">There is no Reboleira account, no Reboleira database and no Reboleira server in this picture. If we disappeared tomorrow, the profile would still be yours and still readable by anything that knows how to look.</p>
+  </div>
+</section>
+
+<!-- 8 ................................................................. -->
+<section class="slide slide--ink" data-chapter="Partners">
+  <div class="stack">
+    <p class="eyebrow rise">Partners &mdash; what each one is doing</p>
+    <h2 class="rise">Three partners, three jobs, no overlap.</h2>
+    <div class="cards rise">
+      <div class="card card--partner">
+        <div class="partner__name">
+          <h3>ENS</h3>
+          <span class="partner__role">The lookup</span>
+        </div>
+        <dl class="spec">
+          <div><dt>What it holds</dt><dd>Two text records on the user's own name: <code>app.ensight.profile</code> (where the profile is) and <code>app.ensight.human</code> (proof a human is behind it).</dd></div>
+          <div><dt>In plain terms</dt><dd>The public entry that lets any app find your preferences &mdash; without you having an account anywhere.</dd></div>
+        </dl>
+        <span class="pill">Live-verified on Sepolia</span>
+      </div>
+      <div class="card card--partner">
+        <div class="partner__name">
+          <h3>0G</h3>
+          <span class="partner__role">The vault and the sealed room</span>
+        </div>
+        <dl class="spec">
+          <div><dt>What it holds</dt><dd><b>Storage:</b> the encrypted profile itself. <b>Compute:</b> the AI that turns profile + page into an interface, running inside a sealed enclave.</dd></div>
+          <div><dt>In plain terms</dt><dd>Your sensitive data is stored where nobody can read it, and processed somewhere nobody can look inside &mdash; not even the operator.</dd></div>
+        </dl>
+        <span class="pill">Encrypted round-trip + real inference</span>
+      </div>
+      <div class="card card--partner">
+        <div class="partner__name">
+          <h3>World ID</h3>
+          <span class="partner__role">The human check</span>
+        </div>
+        <dl class="spec">
+          <div><dt>What it holds</dt><dd>Proof that one unique real person is behind the profile, kept as an anonymous marker that cannot be traced back to them.</dd></div>
+          <div><dt>In plain terms</dt><dd>One human, one profile. No personal data is collected to prove it.</dd></div>
+        </dl>
+        <span class="pill">World ID 4.0, staging + simulator</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 ................................................................. -->
+<section class="slide" data-chapter="Partners">
+  <div class="stack">
+    <p class="eyebrow rise">Partners &mdash; the honest test</p>
+    <h2 class="rise">Take one out and the product stops working.</h2>
+    <p class="lead rise">The useful question about any integration is not "did you call their API". It's "what breaks without it". Here is our answer for each.</p>
+    <div class="tablewrap rise">
+      <table>
+        <thead>
+          <tr><th>Remove&hellip;</th><th>&hellip;and this is what happens</th><th>Could we have faked it?</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>ENS</td>
+            <td>We'd need our own user database to know whose profile is whose. The profile stops being the person's and starts being ours &mdash; the exact thing the pitch is against.</td>
+            <td>Only by becoming a normal SaaS with logins.</td>
+          </tr>
+          <tr>
+            <td>0G Storage</td>
+            <td>The encrypted profile has to sit on a server somebody operates. Availability and takedown become our problem, and the user's.</td>
+            <td>Yes &mdash; and it would have made the privacy claim untrue.</td>
+          </tr>
+          <tr>
+            <td>0G Compute</td>
+            <td>The page content <em>and</em> someone's accessibility needs would be posted to a commercial AI API. That's the most sensitive combination in the product, handed to a third party.</td>
+            <td>Yes &mdash; this is the shortcut we deliberately didn't take.</td>
+          </tr>
+          <tr>
+            <td>World ID</td>
+            <td>"One person, one profile" becomes an honour-system claim. Anyone can mint a thousand names and a thousand "accessibility" profiles.</td>
+            <td>No, not credibly.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note rise">Each partner sits on the critical path of a different guarantee: ENS on ownership, 0G on privacy, World ID on uniqueness. None of them is a logo on a slide.</p>
+  </div>
+</section>
+
+<!-- 10 ................................................................ -->
+<section class="slide" data-chapter="Onboarding">
+  <div class="stack">
+    <p class="eyebrow rise">Onboarding</p>
+    <h2 class="rise">Publishing a profile takes about a minute.</h2>
+    <div class="stage rise">
+      <div class="onboarding">
+        <figure class="shot shot--wizard">
+          <div class="shot__frame">
+            <div class="shot__bar"><span class="shot__dots"><i></i><i></i><i></i></span><span class="shot__url">Publish your profile &mdash; step 1</span></div>
+            <img src="{{IMG:01-step1-connect}}" alt="Onboarding step one: connect your wallet, with a five-step progress bar reading Wallet, Human, Profile, Encrypt, ENS." />
+          </div>
+          <figcaption><b>1 &middot; Connect</b><span>The same wallet later signs the encryption key.</span></figcaption>
+        </figure>
+        <figure class="shot shot--wizard">
+          <div class="shot__frame">
+            <div class="shot__bar"><span class="shot__dots"><i></i><i></i><i></i></span><span class="shot__url">Publish your profile &mdash; step 2</span></div>
+            <img src="{{IMG:02-step2-verify}}" alt="Onboarding step two: prove you are a person, with a Verify with World ID button and a note that no personal data leaves the device." />
+          </div>
+          <figcaption><b>2 &middot; Prove you're a person</b><span>One World ID check. No personal data leaves the device.</span></figcaption>
+        </figure>
+        <div class="onboarding__rest">
+          <div class="flow__step">
+            <span class="flow__n">3</span>
+            <h3>Describe how you read</h3>
+            <p>Language, reading level, tone, accessibility needs &mdash; plain checkboxes, no jargon.</p>
+          </div>
+          <div class="flow__step">
+            <span class="flow__n">4</span>
+            <h3>Encrypt and store</h3>
+            <p>The browser locks the profile and uploads the sealed file to 0G Storage.</p>
+          </div>
+          <div class="flow__step">
+            <span class="flow__n">5</span>
+            <h3>Publish the pointer</h3>
+            <p>Two records go onto the user's ENS name. Every page from now on can use it.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="note rise">The wizard narrates every step, raw on-chain values included, because the people evaluating this will want to check them.</p>
+  </div>
+</section>
+
+<!-- 11 ................................................................ -->
+<section class="slide" data-chapter="Status">
+  <div class="stack">
+    <p class="eyebrow rise">Status &mdash; what is real today</p>
+    <h2 class="rise">Built, verified, and honest about the edges.</h2>
+    <div class="cards rise">
+      <div class="card">
+        <span class="card__kicker">Working end to end</span>
+        <h3>The demo, always</h3>
+        <p>Extract the page, rebuild it, toggle back &mdash; over two pages and two profiles, with automated tests driving the real extension in a real browser.</p>
+        <span class="pill">Verified</span>
+      </div>
+      <div class="card">
+        <span class="card__kicker">Working on live networks</span>
+        <h3>All three partners</h3>
+        <p>ENS records written and read on Sepolia; an encrypted profile uploaded to and fetched from 0G Storage; a real interface generated on 0G Compute; World ID verification completed in the wizard.</p>
+        <span class="pill">Verified</span>
+      </div>
+      <div class="card">
+        <span class="card__kicker">The one gap we won't hide</span>
+        <h3>Reading from 0G inside the page</h3>
+        <p>0G's storage library can only download from a server environment, not from inside a web page yet. So the wizard does the real upload and the real ENS write; the extension currently reads the profile through its local copy.</p>
+        <span class="pill pill--warn">Known limitation</span>
+      </div>
+    </div>
+    <div class="callout rise">
+      <b>And the demo cannot go blank.</b> Every live step has a pre-computed fallback: bad venue wifi, a declined signature or a network outage all drop silently to a stored result instead of a broken page. Which path was used is logged, so a fallback can never be passed off as a live run.
+    </div>
+  </div>
+</section>
+
+<!-- 12 ................................................................ -->
+<section class="slide" data-chapter="Cost">
+  <div class="stack">
+    <p class="eyebrow rise">What it cost</p>
+    <h2 class="rise">Zero euros, end to end.</h2>
+    <div class="split rise">
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Piece</th><th>How it runs</th><th class="num">Cost</th></tr></thead>
+          <tbody>
+            <tr><td>Extension</td><td>Loaded directly in the browser</td><td class="num">&euro;0</td></tr>
+            <tr><td>ENS</td><td>Sepolia test network, faucet funds</td><td class="num">&euro;0</td></tr>
+            <tr><td>0G</td><td>Galileo test network, chain id <code>16602</code></td><td class="num">&euro;0</td></tr>
+            <tr><td>World ID</td><td>Developer portal, staging + simulator</td><td class="num">&euro;0</td></tr>
+            <tr><td>The AI</td><td>0G Compute, with stored results as fallback</td><td class="num">&euro;0</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="stack stack--tight">
+        <h3>Why that's worth saying</h3>
+        <p class="note">No paid API sits anywhere on the critical path, which means the architecture we demoed is the architecture we'd ship &mdash; nothing was mocked out to save money, and there's no invoice waiting on the other side of a launch.</p>
+        <p class="note">It also means anyone on the team can run the whole thing locally today, without a budget request or a credential from us.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 13 ................................................................ -->
+<section class="slide slide--ink" data-chapter="What's next">
+  <div class="stack">
+    <p class="eyebrow rise">What's next</p>
+    <h2 class="rise">Today the page adapts to what you declared. Next, to how you actually read.</h2>
+    <div class="split rise">
+      <ul class="plain">
+        <li><b>A profile that learns.</b> If someone always skips the video and enlarges the text, the profile should notice &mdash; without that behaviour leaving their device. Deliberately out of scope for this build.</li>
+        <li><b>Read the profile straight from 0G in the browser</b>, closing the one gap on the status slide.</li>
+        <li><b>Profiles that travel.</b> The same ENS-published profile could be read by a native app, an operating system, or a site that wants to serve it directly &mdash; nothing about it is extension-specific.</li>
+      </ul>
+      <div class="callout">
+        <b>The one-line version:</b> we made accessibility something a person carries with them, instead of something every website has to remember to offer.
+      </div>
+    </div>
+    <div class="meta rise">
+      <span><svg class="mark" width="18" height="18" aria-hidden="true"><use href="#mark" /></svg> Reboleira</span>
+      <span>ETH Global Lisbon 2026</span>
+      <span>Demo profile on <code>reboleira.eth</code></span>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+  (function () {
+    var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+    var rail = document.getElementById('rail');
+    var cur = document.getElementById('cur');
+    var chapter = document.getElementById('chapter');
+    var pad = function (n) { return n < 10 ? '0' + n : String(n); };
+
+    document.getElementById('total').textContent = pad(slides.length);
+    var ticks = slides.map(function () {
+      var i = document.createElement('i');
+      rail.appendChild(i);
+      return i;
+    });
+
+    var index = 0;
+    function render() {
+      cur.textContent = pad(index + 1);
+      chapter.textContent = slides[index].dataset.chapter || '';
+      ticks.forEach(function (t, i) { t.classList.toggle('on', i <= index); });
+    }
+
+    function go(delta) {
+      index = Math.max(0, Math.min(slides.length - 1, index + delta));
+      slides[index].scrollIntoView({ block: 'start' });
+      render();
+    }
+
+    document.getElementById('prev').addEventListener('click', function () { go(-1); });
+    document.getElementById('next').addEventListener('click', function () { go(1); });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); go(1); }
+      else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
+      else if (e.key === 'Home') { e.preventDefault(); index = 0; go(0); }
+      else if (e.key === 'End') { e.preventDefault(); index = slides.length - 1; go(0); }
+    });
+
+    // One observer drives two things: the entrance transition (once, at a low
+    // threshold so it has started before the slide is centred) and the counter
+    // (at half visibility, so hand-scrolling keeps the arrows in sync).
+    if ('IntersectionObserver' in window) {
+      var enter = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) { e.target.classList.add('is-visible'); enter.unobserve(e.target); }
+        });
+      }, { threshold: 0.12 });
+
+      var track = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) {
+            var i = slides.indexOf(e.target);
+            if (i >= 0) { index = i; render(); }
+          }
+        });
+      }, { threshold: 0.5 });
+
+      slides.forEach(function (s) { enter.observe(s); track.observe(s); });
+    } else {
+      slides.forEach(function (s) { s.classList.add('is-visible'); });
+    }
+
+    render();
+  })();
+</script>

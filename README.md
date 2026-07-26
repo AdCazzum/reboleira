@@ -101,7 +101,10 @@ For local development:
 
 ```bash
 npm run dev        # Vite dev server with HMR
+npm run icons      # re-rasterise src/ui/icons/mark.svg into the manifest PNGs
 ```
+
+The extension's mark lives in `src/ui/icons/mark.svg`; the PNGs beside it are generated (Chrome does not accept SVG for extension icons) and committed, so a plain `npm run build` needs no browser. Edit the SVG, run `npm run icons`, and commit both — `npm test` fails if the PNGs are missing, mis-sized, or if the inline copies of the mark in the popup and the onboarding masthead have drifted from the SVG.
 
 ### Full live setup
 

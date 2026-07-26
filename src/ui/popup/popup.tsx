@@ -31,6 +31,30 @@ function abbrevia(uri: string): string {
   return uri.length > 18 ? `${uri.slice(0, 10)}…${uri.slice(-6)}` : uri;
 }
 
+// Il marchio è inline e non <img src={chrome.runtime.getURL('…')}>: nessun
+// asset da risolvere a runtime e nitidezza a qualsiasi densità di schermo,
+// mentre i PNG del manifest sono rasterizzati apposta per misure fisse.
+//
+// La geometria è la stessa di src/ui/icons/mark.svg — tests/mark.test.ts
+// fallisce se le due divergono. I colori restano hex qui perché questo popup
+// non ha un foglio di stile: sono gli stessi letterali già usati sotto.
+// aria-hidden perché il nome è nel testo accanto: annunciarlo due volte è
+// rumore per chi usa uno screen reader.
+function Marchio() {
+  return (
+    <svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true">
+      <path
+        d="M3 16A13.45 13.45 0 0 1 29 16A13.45 13.45 0 0 1 3 16Z"
+        fill="#ffffff"
+        stroke="#0b57d0"
+        strokeWidth="4"
+        strokeLinejoin="round"
+      />
+      <circle cx="16" cy="16" r="4.5" fill="#14161a" />
+    </svg>
+  );
+}
+
 function Popup() {
   const [persona, setPersona] = useState<PersonaKey>('personaA');
   const [profilo, setProfilo] = useState<StatoProfilo>({ tipo: 'verifica' });
@@ -95,7 +119,10 @@ function Popup() {
 
   return (
     <div style={{ width: 280, padding: 12, font: '13px/1.4 system-ui, sans-serif' }}>
-      <strong style={{ display: 'block', marginBottom: 8 }}>ENSight</strong>
+      <strong style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+        <Marchio />
+        ENSight
+      </strong>
 
       <button onClick={adatta} style={{ width: '100%', padding: '8px 10px', cursor: 'pointer' }}>
         Adatta questa pagina

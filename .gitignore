@@ -5,3 +5,6 @@ dist
 dist-e2e
 demo-preview
 deck-preview
+# Ricostruibile in un comando da docs/deck/index.html, che invece è committato:
+# node scripts/export-deck-pdf.mjs
+docs/deck/*.pdf

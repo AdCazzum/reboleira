@@ -491,11 +491,66 @@
     .twin__cell + .twin__cell { border-left: 0; border-top: 1px solid var(--hairline); }
   }
 
+  /* ---------- print / PDF ----------
+     One slide per page at 1280x720 (13.333in x 7.5in at 96dpi — the widescreen
+     slide size Keynote and PowerPoint use), which is also what
+     scripts/export-deck-pdf.mjs asks Chromium for. The dark slides stay dark:
+     this deck is exported to be presented from, not printed on paper, and
+     flipping them to white would throw away half the design. */
   @media print {
-    .slide { min-height: auto; page-break-after: always; border: 0; }
-    .slide--ink { --canvas: #ffffff; --ink: #12151b; --muted: #5a6270; --surface: #ffffff; --hairline: #dee2e9; --accent: #0b57d0; --accent-soft: #e6edfc; --stage: #e9ecf2; }
-    .slide--ink::before { display: none; }
+    @page { size: 1280px 720px; margin: 0; }
+
+    html { scroll-snap-type: none; }
+    body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+
+    .slide {
+      height: 720px; min-height: 0;
+      padding: 36px 56px;
+      overflow: hidden;
+      border-bottom: 0;
+      break-after: page; break-inside: avoid;
+    }
+    .slide:last-child { break-after: auto; }
+
+    /* A page box is 720px tall where the screen had a whole window, and four
+       slides did not fit — they were being clipped by the overflow:hidden
+       above without anything failing. Everything below buys back those pixels;
+       scripts/export-deck-pdf.mjs measures each slide and shouts if one grows
+       past the box again. */
+    .stack { gap: 20px; }
+    .title { gap: 24px; }
+    h1 { font-size: 58px; }
+    h2 { font-size: 38px; }
+    .lead { font-size: 19px; }
+    .slide h1 + .lead, .slide h2 + .lead { margin-top: 18px; }
+    .twin__cell { padding: 18px 24px; }
+    .twin__a { font-size: 19px; line-height: 1.55; }
+    ul.plain { gap: 14px; }
+    .callout { padding: 20px 26px; font-size: 18px; }
+    th, td { padding: 11px 20px; }
+    tbody td:first-child { font-size: 17px; padding-top: 13px; }
+    .card { padding: 20px 20px 24px; }
+    .flow__step { padding: 14px 18px 18px; }
+    .stage { padding: 14px; }
+    .shots { gap: 18px; }
+    /* The onboarding slide is the tightest of the thirteen: its right-hand
+       column stacks three cards next to the screenshots, so it is that column,
+       not the images, that sets the height. */
+    .onboarding { gap: 18px; }
+    .onboarding__rest { gap: 10px; }
+    .onboarding__rest .flow__step { padding: 12px 16px 14px; }
+
+    /* svh has no useful meaning in paged media, so the screenshot caps become
+       the page-relative pixels they were standing in for. */
+    .shot--tall .shot__frame img { max-height: 268px; }
+    /* The wizard captures can stay tall — the three cards beside them are what
+       sets that row's height, so cropping these any harder buys no space and
+       costs the "Connect wallet" button, which is the whole point of the shot. */
+    .shot--wizard .shot__frame img { max-height: 250px; }
+
     .rail, .counter { display: none; }
+    /* Nothing scrolls into view in a PDF, so the entrance state must not be
+       the state that gets printed. */
     .rise { opacity: 1; transform: none; }
   }
 </style>
@@ -618,7 +673,7 @@
         <figure class="shot shot--tall">
           <div class="shot__frame">
             <div class="shot__bar"><span class="shot__dots"><i></i><i></i><i></i></span><span class="shot__url">page-a-news.html</span></div>
-            <img src="{{IMG:11-news-persona-a}}" alt="The same article rebuilt for a reader with dyslexia: large rounded typeface, short simplified Italian sentences, a summary first, no banner or sidebar." />
+            <img src="{{IMG:11-news-persona-a}}" alt="The same article rebuilt for a reader with dyslexia: large rounded typeface, short simplified sentences, a summary first, no banner or sidebar." />
           </div>
           <figcaption><b>Reader with dyslexia</b><span>Summary first, plain short sentences, dyslexia-friendly type, banner and sidebar gone.</span></figcaption>
         </figure>

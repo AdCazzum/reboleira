@@ -1,18 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="ENSight">
-  <!-- Marchio ENSight: una lente/occhio, cioè le due cose che l'estensione fa
-       (guardare la pagina, rifrangerla nel profilo di chi legge).
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="Reboleira">
+  <!-- Marchio Reboleira: un cartello della metropolitana, perché Reboleira è
+       il capolinea della linea blu di Lisbona, dove il progetto è nato.
 
-       Griglia 32 con tratto di 4 unità perché i quattro formati che Chrome
-       chiede stanno a 32 in rapporto 0.5x / 1x / 1.5x / 4x: il tratto cade su
-       2, 4, 6 e 16 px esatti, mai a cavallo di mezzo pixel. Per lo stesso
-       motivo qui non c'è nessun dettaglio sottile — a 16 px sopravvive solo
-       una silhouette chiusa.
+       Disegnato qui e non ripreso da Metropolitano de Lisboa: il loro logo è
+       un marchio registrato, e usarlo dichiarerebbe un'affiliazione che non
+       esiste. Di quel linguaggio restano l'idea (scudo pieno, M in negativo)
+       e il rosso; la geometria è nostra e non c'è nessun lettering altrui.
 
-       La lente è RIEMPITA, non solo contornata: la toolbar di Chrome può
-       essere chiara o scura, e con l'interno trasparente la pupilla scura
-       spariva sul tema scuro lasciando un anello blu vuoto. Il riempimento
-       rende il marchio autoportante su qualsiasi fondo — sui fondi chiari,
-       dove coincide con la pagina, non si vede comunque.
+       Griglia 32 con tutte le coordinate PARI perché i quattro formati che
+       Chrome chiede stanno a 32 in rapporto 0.5x / 1x / 1.5x / 4x: a 16 px
+       ogni bordo cade su un pixel intero, mai a cavallo di mezzo. Le aste
+       della M sono spesse 4 unità (2 px a 16) e le due diagonali sono
+       parallele, sfalsate di esattamente uno spessore: è ciò che tiene in
+       piedi la lettera quando si rimpicciolisce.
+
+       Lo scudo è PIENO, non contornato: la toolbar di Chrome può essere
+       chiara o scura, e un marchio che si regge sul fondo sparisce su metà
+       dei temi. Così è autoportante ovunque.
 
        I colori qui sono attributi di presentazione, cioè il gradino più basso
        nella cascata SVG: valgono da soli quando questo file è aperto o
@@ -21,6 +25,6 @@
        token del contesto che le ospita senza ripetere un hex. La geometria è
        invece duplicata in quei due file: tests/mark.test.ts verifica che le
        tre copie non divergano. -->
-  <path class="mark__lens" d="M3 16A13.45 13.45 0 0 1 29 16A13.45 13.45 0 0 1 3 16Z" fill="#ffffff" stroke="#0b57d0" stroke-width="4" stroke-linejoin="round" />
-  <circle class="mark__pupil" cx="16" cy="16" r="4.5" fill="#14161a" />
+  <rect class="mark__shield" x="2" y="2" width="28" height="28" rx="4" fill="#e0392c" />
+  <path class="mark__letter" d="M6 26V10l10 10 10-10v16h-4v-8l-6 6-6-6v8z" fill="#ffffff" />
 </svg>

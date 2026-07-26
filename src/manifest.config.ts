@@ -1,7 +1,7 @@
 import { defineManifest } from '@crxjs/vite-plugin';
 export default defineManifest({
   manifest_version: 3,
-  name: 'ENSight',
+  name: 'Reboleira',
   version: '0.1.0',
   // PNG e non SVG perché Chrome non accetta vettori qui. Sono generati da
   // src/ui/icons/mark.svg con `npm run icons` e committati, così una build

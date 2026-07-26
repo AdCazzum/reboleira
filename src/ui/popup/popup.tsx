@@ -43,14 +43,8 @@ function abbrevia(uri: string): string {
 function Marchio() {
   return (
     <svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true">
-      <path
-        d="M3 16A13.45 13.45 0 0 1 29 16A13.45 13.45 0 0 1 3 16Z"
-        fill="#ffffff"
-        stroke="#0b57d0"
-        strokeWidth="4"
-        strokeLinejoin="round"
-      />
-      <circle cx="16" cy="16" r="4.5" fill="#14161a" />
+      <rect x="2" y="2" width="28" height="28" rx="4" fill="#e0392c" />
+      <path d="M6 26V10l10 10 10-10v16h-4v-8l-6 6-6-6v8z" fill="#ffffff" />
     </svg>
   );
 }
@@ -121,7 +115,7 @@ function Popup() {
     <div style={{ width: 280, padding: 12, font: '13px/1.4 system-ui, sans-serif' }}>
       <strong style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
         <Marchio />
-        ENSight
+        Reboleira
       </strong>
 
       <button onClick={adatta} style={{ width: '100%', padding: '8px 10px', cursor: 'pointer' }}>

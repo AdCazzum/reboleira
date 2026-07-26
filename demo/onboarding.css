@@ -19,6 +19,7 @@
   --ok: #137333;
   --err: #a50e0e;
   --link: #0b57d0;
+  --brand: #e0392c;
   --warn-bg: #fdf6e3;
   --warn-border: #e8d8a8;
 
@@ -84,8 +85,11 @@ a { color: var(--link); }
   flex: none;
 }
 
-.masthead__glyph .mark__lens { fill: var(--surface); stroke: var(--link); }
-.masthead__glyph .mark__pupil { fill: var(--ink); }
+/* Il rosso del marchio è suo e non entra nella palette dell'interfaccia: è
+   l'unico posto in tutta la pagina in cui compare, per questo ha un token a
+   parte invece di riusare --link o --err. */
+.masthead__glyph .mark__shield { fill: var(--brand); }
+.masthead__glyph .mark__letter { fill: var(--surface); }
 
 .masthead__meta {
   display: flex;

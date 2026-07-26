@@ -46,8 +46,8 @@ describe('icone dell’estensione', () => {
 });
 
 describe('geometria del marchio', () => {
-  // La `d` della lente è duplicata per necessità: mark.svg deve restare un
-  // file autonomo per il rasterizzatore, il popup non ha un foglio di stile
+  // La `d` della M è duplicata per necessità: mark.svg deve restare un file
+  // autonomo per il rasterizzatore, il popup non ha un foglio di stile
   // condiviso, e il masthead dell'onboarding è HTML statico che non può
   // importare nulla. Duplicare va bene finché divergere no.
   const sorgenti = {
@@ -56,25 +56,35 @@ describe('geometria del marchio', () => {
     'demo/onboarding.html': read('demo/onboarding.html')
   };
 
-  const percorsoLente = /d="(M3 16A[^"]+)"/;
+  const percorsoLettera = /d="(M6 26V10[^"]+)"/;
 
   it('usa lo stesso tracciato in tutte le copie', () => {
     const trovati = Object.entries(sorgenti).map(([file, testo]) => {
-      const m = testo.match(percorsoLente);
-      expect(m, `${file}: nessun tracciato della lente`).not.toBeNull();
+      const m = testo.match(percorsoLettera);
+      expect(m, `${file}: nessun tracciato della M`).not.toBeNull();
       return [file, m![1]] as const;
     });
-    const atteso = sorgenti['src/ui/icons/mark.svg'].match(percorsoLente)![1];
+    const atteso = sorgenti['src/ui/icons/mark.svg'].match(percorsoLettera)![1];
     for (const [file, d] of trovati) {
       expect(d, `${file} è fuori sincrono con mark.svg`).toBe(atteso);
     }
   });
 
-  it('usa la stessa pupilla in tutte le copie', () => {
+  it('usa lo stesso scudo in tutte le copie', () => {
     for (const [file, testo] of Object.entries(sorgenti)) {
-      expect(testo, `${file}: pupilla assente o spostata`).toMatch(
-        /cx="16"\s+cy="16"\s+r="4\.5"/
+      expect(testo, `${file}: scudo assente o di misura diversa`).toMatch(
+        /x="2"\s+y="2"\s+width="28"\s+height="28"\s+rx="4"/
       );
     }
+  });
+
+  // Il marchio regge il rimpicciolimento solo se ogni bordo cade su un pixel
+  // intero anche a 16 px, cioè a metà della griglia 32. Una coordinata dispari
+  // introdotta per "aggiustare" l'ottica a dimensione piena è invisibile qui e
+  // devastante in toolbar, quindi la si prende subito.
+  it('tiene tutte le coordinate su unità pari della griglia 32', () => {
+    const d = sorgenti['src/ui/icons/mark.svg'].match(percorsoLettera)![1];
+    const numeri = d.match(/\d+/g)!.map(Number);
+    expect(numeri.filter(n => n % 2 !== 0), `coordinate dispari in "${d}"`).toEqual([]);
   });
 });

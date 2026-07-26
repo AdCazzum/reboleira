@@ -68,9 +68,24 @@ try {
   // page. Counting the page objects in the output is the only honest check.
   const pdf = await readFile(OUT, 'latin1');
   const pages = (pdf.match(/\/Type\s*\/Page[^s]/g) ?? []).length;
-  console.log(`${OUT}\n  ${pages} pagine per ${slides} slide, ${WIDTH}x${HEIGHT}px`);
   if (pages !== slides) {
     problems.push(`impaginazione: ${pages} pagine per ${slides} slide — qualche slide sfora il page box`);
+  }
+
+  // The check that actually matters, and the one whose absence shipped a
+  // broken deck: a font that the page renders happily can still fail to make
+  // it into the PDF — Chromium simply drops variable fonts when printing, and
+  // every reader then substitutes something with the wrong metrics. Nothing
+  // warns; the export succeeds and the file is ruined.
+  const embedded = [...new Set([...pdf.matchAll(/\/BaseFont\s*\/([A-Za-z0-9+\-,_]+)/g)]
+    .map(m => m[1].replace(/^[A-Z]{6}\+/, '')))];
+  const mancanti = ['Newsreader', 'IBMPlexSans', 'IBMPlexMono']
+    .filter(f => !embedded.some(e => e.replace(/[\s-]/g, '').startsWith(f)));
+
+  console.log(`${OUT}\n  ${pages} pagine per ${slides} slide, ${WIDTH}x${HEIGHT}px`);
+  console.log(`  font incorporati: ${embedded.join(', ') || 'nessuno'}`);
+  if (mancanti.length > 0) {
+    problems.push(`font non incorporati: ${mancanti.join(', ')} — il PDF userà sostituti`);
   }
 } finally {
   await browser.close();

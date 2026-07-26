@@ -46,20 +46,40 @@
 -->
 
 <style>
-  /* Latin subsets only; each FONT placeholder below becomes a data: URI at build. */
+  /* Latin subsets only; each FONT placeholder below becomes a data: URI at build.
+
+     STATIC INSTANCES, NOT VARIABLE FONTS, and that is not a preference:
+     Chromium does not embed a variable font when it prints, so the PDF export
+     came out with Newsreader and Plex Sans missing entirely and every viewer
+     substituting something else. The two families are instanced to fixed
+     weights (see docs/deck/fonts/README.md) — which is also why no rule below
+     sets font-variation-settings: the optical size is baked into the file. */
   @font-face {
-    font-family: "Newsreader";
-    src: url({{FONT:newsreader}}) format("woff2");
-    font-weight: 400 700; font-style: normal; font-display: block;
+    font-family: "Newsreader"; src: url({{FONT:newsreader-400}}) format("woff2");
+    font-weight: 400; font-style: normal; font-display: block;
   }
   @font-face {
-    font-family: "Plex Sans";
-    src: url({{FONT:plex-sans}}) format("woff2");
-    font-weight: 400 600; font-style: normal; font-display: block;
+    font-family: "Newsreader"; src: url({{FONT:newsreader-500}}) format("woff2");
+    font-weight: 500; font-style: normal; font-display: block;
   }
   @font-face {
-    font-family: "Plex Mono";
-    src: url({{FONT:plex-mono}}) format("woff2");
+    font-family: "Newsreader"; src: url({{FONT:newsreader-600}}) format("woff2");
+    font-weight: 600; font-style: normal; font-display: block;
+  }
+  @font-face {
+    font-family: "Plex Sans"; src: url({{FONT:plex-sans-400}}) format("woff2");
+    font-weight: 400; font-style: normal; font-display: block;
+  }
+  @font-face {
+    font-family: "Plex Sans"; src: url({{FONT:plex-sans-500}}) format("woff2");
+    font-weight: 500; font-style: normal; font-display: block;
+  }
+  @font-face {
+    font-family: "Plex Sans"; src: url({{FONT:plex-sans-600}}) format("woff2");
+    font-weight: 600; font-style: normal; font-display: block;
+  }
+  @font-face {
+    font-family: "Plex Mono"; src: url({{FONT:plex-mono-400}}) format("woff2");
     font-weight: 400; font-style: normal; font-display: block;
   }
 
@@ -242,8 +262,8 @@
     margin: 0; font-family: var(--serif); font-weight: 500;
     text-wrap: balance; letter-spacing: -0.018em;
   }
-  h1 { font-size: clamp(42px, 6.2vw, 76px); line-height: 1.02; font-variation-settings: "opsz" 72; }
-  h2 { font-size: clamp(30px, 3.9vw, 47px); line-height: 1.1; font-variation-settings: "opsz" 48; }
+  h1 { font-size: clamp(42px, 6.2vw, 76px); line-height: 1.02; }
+  h2 { font-size: clamp(30px, 3.9vw, 47px); line-height: 1.1; }
   h3 {
     margin: 0; font-family: var(--sans); font-weight: 600; font-size: 18px;
     line-height: 1.3; letter-spacing: -0.005em; text-wrap: balance;
@@ -297,7 +317,7 @@
     color: var(--muted); font-weight: 600;
   }
   .twin__a { font-family: var(--dys); font-size: 21px; line-height: 1.7; }
-  .twin__b { font-family: var(--serif); font-size: 17px; line-height: 1.5; font-variation-settings: "opsz" 16; }
+  .twin__b { font-family: var(--serif); font-size: 17px; line-height: 1.5; }
 
   .meta {
     display: flex; flex-wrap: wrap; gap: var(--s2) var(--s5);
@@ -378,7 +398,7 @@
   .partner__name { display: flex; flex-direction: column; gap: 2px; }
   .partner__name h3 {
     font-family: var(--serif); font-weight: 500; font-size: 30px;
-    letter-spacing: -0.015em; font-variation-settings: "opsz" 32;
+    letter-spacing: -0.015em;
   }
   .partner__role { font-size: 12.5px; color: var(--accent); font-weight: 500; letter-spacing: .02em; }
 
@@ -462,7 +482,7 @@
     border-radius: var(--radius);
     background: var(--accent-soft);
     font-family: var(--serif); font-size: clamp(17px, 1.6vw, 20px); line-height: 1.5;
-    font-variation-settings: "opsz" 20;
+;
   }
   .callout b { font-weight: 600; }
 
@@ -547,6 +567,12 @@
        sets that row's height, so cropping these any harder buys no space and
        costs the "Connect wallet" button, which is the whole point of the shot. */
     .shot--wizard .shot__frame img { max-height: 250px; }
+
+    /* Blurred shadows have no PDF equivalent: Chromium flattens them into
+       hard-edged grey slabs that sit across the screenshots like tape. Hairlines
+       do the same separating job and survive the trip. */
+    .shot__frame { box-shadow: none; border: 1px solid rgba(18, 21, 27, .16); }
+    .stage { box-shadow: none; border: 1px solid var(--hairline); }
 
     .rail, .counter { display: none; }
     /* Nothing scrolls into view in a PDF, so the entrance state must not be
@@ -680,9 +706,9 @@
         <figure class="shot shot--tall">
           <div class="shot__frame">
             <div class="shot__bar"><span class="shot__dots"><i></i><i></i><i></i></span><span class="shot__url">page-a-news.html</span></div>
-            <img src="{{IMG:12-news-persona-b}}" alt="The same article rebuilt for an expert reader: dense English prose, high contrast, technical sections on investment, labour and next steps." />
+            <img src="{{IMG:12-news-persona-b}}" alt="The same article rebuilt for an expert reader: dense prose, high contrast, technical sections on investment, labour and next steps." />
           </div>
-          <figcaption><b>Expert reader, English</b><span>Denser, technical, high contrast, translated, keeps the numbers.</span></figcaption>
+          <figcaption><b>Expert reader</b><span>Denser, technical, high contrast, keeps every number.</span></figcaption>
         </figure>
       </div>
     </div>

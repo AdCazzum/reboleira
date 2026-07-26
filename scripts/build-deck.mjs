@@ -40,9 +40,14 @@ const SOURCES = {
   '02-step2-verify': 'demo-preview'
 };
 
-// Latin-subset woff2, fetched once from Google Fonts (both families are open
-// licensed: Newsreader and IBM Plex are SIL OFL 1.1).
-const FONTS = ['newsreader', 'plex-sans', 'plex-mono'];
+// Latin-subset woff2, static instances — NOT the variable originals: Chromium
+// silently refuses to embed a variable font when it prints, which left the PDF
+// export with two of the three families missing. See docs/deck/fonts/README.md.
+const FONTS = [
+  'newsreader-400', 'newsreader-500', 'newsreader-600',
+  'plex-sans-400', 'plex-sans-500', 'plex-sans-600',
+  'plex-mono-400'
+];
 
 const MAX_EDGE = 1000;
 const QUALITY = 78;

@@ -39,10 +39,12 @@
   referenced with <use>, so the two lockups cannot drift apart.
 
   Colour and spacing tokens come from demo/onboarding.css too, so the deck and
-  the product read as the same object. The four dark slides (1, 6, 8, 13) are
-  the deck's spine: opening claim, the safety guarantee, the partner chapter,
-  the close. They redefine the tokens locally rather than restyling
-  components, so everything inside them keeps working untouched.
+  the product read as the same object. ONE GROUND FOR ALL THIRTEEN SLIDES: an
+  earlier cut put the opening, the guarantee, the partner chapter and the close
+  on a dark ground to give the deck a spine. It read as inconsistency rather
+  than rhythm — and under a dark theme the two grounds were just two slightly
+  different blacks — so emphasis now comes from type and spacing alone. Don't
+  reintroduce a per-slide background without weighing that.
 -->
 
 <style>
@@ -182,9 +184,8 @@
     position: fixed; inset: 0 0 auto 0; z-index: 20;
     display: flex; gap: 2px; padding: 6px 8px;
   }
-  /* Fixed chrome sits over both light and ink slides, so the unfilled ticks
-     are a translucent neutral rather than a themed hairline — a light hairline
-     reads as a row of bright dashes on the dark slides. */
+  /* Translucent neutral rather than a themed hairline: the ticks must stay
+     legible under either colour scheme without the rail restating the theme. */
   .rail i {
     flex: 1; height: 2px; border-radius: 2px;
     background: rgba(125, 136, 156, .32);
@@ -221,30 +222,6 @@
     border-bottom: 1px solid var(--hairline);
   }
   .slide > * { position: relative; z-index: 1; width: 100%; max-width: var(--col); margin-inline: auto; }
-
-  /* Statement slides: same components, different ground. */
-  .slide--ink {
-    --canvas: #0a1020;
-    --surface: rgba(255, 255, 255, .05);
-    --stage: rgba(255, 255, 255, .04);
-    --ink: #f1f4fa;
-    --muted: #9dabc4;
-    --hairline: rgba(255, 255, 255, .13);
-    --accent: #93b7ff;
-    --accent-soft: rgba(147, 183, 255, .13);
-    --ok: #7fd39c; --ok-soft: rgba(127, 211, 156, .14);
-    --warn: #e8c274; --warn-soft: rgba(232, 194, 116, .14);
-    --shadow: 0 20px 50px rgba(0, 0, 0, .45);
-    color: var(--ink);
-    border-bottom-color: transparent;
-  }
-  /* Ambient lens light — the mark is a lens, so the dark slides are lit like one. */
-  .slide--ink::before {
-    content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
-    background:
-      radial-gradient(58% 46% at 82% 14%, rgba(147, 183, 255, .20), transparent 68%),
-      radial-gradient(42% 38% at 8% 92%, rgba(120, 160, 255, .13), transparent 70%);
-  }
 
   .eyebrow {
     display: flex; align-items: center; gap: var(--s3);
@@ -514,9 +491,7 @@
   /* ---------- print / PDF ----------
      One slide per page at 1280x720 (13.333in x 7.5in at 96dpi — the widescreen
      slide size Keynote and PowerPoint use), which is also what
-     scripts/export-deck-pdf.mjs asks Chromium for. The dark slides stay dark:
-     this deck is exported to be presented from, not printed on paper, and
-     flipping them to white would throw away half the design. */
+     scripts/export-deck-pdf.mjs asks Chromium for. */
   @media print {
     @page { size: 1280px 720px; margin: 0; }
 
@@ -605,7 +580,7 @@
 <main>
 
 <!-- 1 ................................................................. -->
-<section class="slide slide--ink" data-chapter="Opening">
+<section class="slide" data-chapter="Opening">
   <div class="title">
     <div class="brand rise">
       <svg class="mark" width="30" height="30" role="img" aria-label="Reboleira"><use href="#mark" /></svg>
@@ -744,7 +719,7 @@
 </section>
 
 <!-- 6 ................................................................. -->
-<section class="slide slide--ink" data-chapter="The guarantee">
+<section class="slide" data-chapter="The guarantee">
   <div class="stack">
     <p class="eyebrow rise">The part that makes it safe to ship</p>
     <h2 class="rise">The AI may rewrite the words. It can never invent where a click goes.</h2>
@@ -802,7 +777,7 @@
 </section>
 
 <!-- 8 ................................................................. -->
-<section class="slide slide--ink" data-chapter="Partners">
+<section class="slide" data-chapter="Partners">
   <div class="stack">
     <p class="eyebrow rise">Partners &mdash; what each one is doing</p>
     <h2 class="rise">Three partners, three jobs, no overlap.</h2>
@@ -986,7 +961,7 @@
 </section>
 
 <!-- 13 ................................................................ -->
-<section class="slide slide--ink" data-chapter="What's next">
+<section class="slide" data-chapter="What's next">
   <div class="stack">
     <p class="eyebrow rise">What's next</p>
     <h2 class="rise">Today the page adapts to what you declared. Next, to how you actually read.</h2>

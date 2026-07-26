@@ -8,7 +8,10 @@
 // mock-up of it.
 import type { ComponentChildren } from 'preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
-import { chainLabel, shortenMiddle } from './onboarding-logic';
+import { chainLabel, shortenMiddle, guidanceFor, type PreflightIssue } from './onboarding-logic';
+import { profileToTheme, themeToCssVars } from '../src/core/theme';
+import type { PersonaProfile } from '../src/core/types';
+import { parseDomains, formatDomains, commitChips } from './onboarding-logic';
 
 export function MastheadMeta({ ensName, chainId, address }: {
   ensName: string;
@@ -33,17 +36,28 @@ export function MastheadMeta({ ensName, chainId, address }: {
   );
 }
 
-export function Stepper({ steps, current, furthest, busy, onSelect }: {
+export function Stepper({ steps, current, furthest, busy, finalDone, onSelect }: {
   steps: { n: number; label: string }[];
   current: number;
   furthest: number;
   busy: boolean;
+  // The last step's own "reached" state (furthest) can never distinguish
+  // "on the final step" from "actually finished" - there's no step 6 to
+  // advance to. finalDone carries the real completion signal (both ENS
+  // transactions landed) so only the last step needs it; steps 1-4 keep the
+  // existing furthest/current-based rule untouched.
+  finalDone: boolean;
   onSelect: (n: number) => void;
 }) {
+  const lastStep = steps.length > 0 ? steps[steps.length - 1].n : null;
   return (
-    <ol class="stepper">
+    <ol class="stepper" role="list">
       {steps.map(s => {
-        const state = s.n === current ? 'current' : s.n < furthest || s.n < current ? 'done' : 'todo';
+        const state = s.n === current
+          ? 'current'
+          : s.n === lastStep
+            ? (finalDone ? 'done' : 'todo')
+            : s.n < furthest || s.n < current ? 'done' : 'todo';
         // Unreachable while a step's own action is mid-flight: navigating away
         // (advance()) would otherwise yank the user elsewhere the instant a
         // pending transaction lands underneath them.
@@ -97,6 +111,7 @@ export function Artifact({ label, value, href }: { label: string; value: string;
       <button
         type="button"
         class="btn btn--quiet btn--tiny"
+        aria-label={`Copy ${label}`}
         onClick={() => {
           navigator.clipboard?.writeText(value).then(
             () => { setCopied(true); setTimeout(() => setCopied(false), 1500); },
@@ -137,24 +152,320 @@ export function LogPanel({ lines }: { lines: string[] }) {
     <details class="disclosure" id="log-disclosure">
       <summary>Technical log ({lines.length})</summary>
       <div class="disclosure__body">
-        <pre class="log" ref={pre} aria-live="polite">{lines.join('\n')}</pre>
+        {/* No aria-live here: this <pre> holds the whole joined transcript,
+            so a live region on it would re-announce every prior line on
+            every append. The log is inside a collapsed <details> anyway -
+            nothing here needs to interrupt with a running announcement. */}
+        <pre class="log" ref={pre}>{lines.join('\n')}</pre>
       </div>
     </details>
   );
 }
 
-// --- replaced in Task 4 ---
-export function ErrorBlock({ error }: { error: string | null; onRetry: (() => void) | null }) {
+/** Errors get three parts: what failed, the raw message (never truncated — it
+ *  is often the only diagnostic), and, when the failure is one we recognise,
+ *  what to do about it. */
+export function ErrorBlock({ error, onRetry }: { error: unknown; onRetry: (() => void) | null }) {
   if (!error) return null;
-  return <p class="error__summary" role="alert">Error: {error}</p>;
+  const message = error instanceof Error ? error.message : String(error);
+  const guidance = guidanceFor(error);
+  return (
+    <div class="error" role="alert">
+      <p class="error__summary">That step did not complete.</p>
+      <p class="error__raw">{message}</p>
+      {guidance && <p class="error__guidance">{guidance}</p>}
+      {onRetry && <button type="button" class="btn btn--quiet" onClick={onRetry}>Try again</button>}
+    </div>
+  );
 }
 
-// --- replaced in Task 5 ---
-export function ProfileForm(_props: Record<string, unknown>) {
-  return <p>Profile form — replaced in Task 5.</p>;
+/** Warns, never blocks: the point is to surface a broken setup before a wallet
+ *  is connected, not to decide the run is impossible. */
+export function PreflightStrip({ issues }: { issues: PreflightIssue[] }) {
+  if (issues.length === 0) return null;
+  return (
+    <div class="preflight" role="status">
+      <p class="preflight__title">
+        {issues.length === 1 ? 'One thing needs attention' : `${issues.length} things need attention`}
+      </p>
+      <ul class="preflight__list">
+        {issues.map(i => <li key={i.id}>{i.message}</li>)}
+      </ul>
+    </div>
+  );
 }
 
-// --- replaced in Task 6 ---
-export function Summary(_props: Record<string, unknown>) {
-  return <p class="summary__done">Onboarding complete.</p>;
+export function ChoiceGroup<T extends string>({ legend, value, options, onChange }: {
+  legend: string;
+  value: T;
+  options: { value: T; name: string; effect: string }[];
+  onChange: (value: T) => void;
+}) {
+  const group = `choice-${legend.replace(/\s+/g, '-').toLowerCase()}`;
+  return (
+    <fieldset class="choices">
+      <legend class="choices__legend">{legend}</legend>
+      {options.map(o => (
+        <label key={o.value} class="choice">
+          <input
+            type="radio"
+            name={group}
+            value={o.value}
+            checked={value === o.value}
+            onChange={() => onChange(o.value)}
+          />
+          <span class="choice__text">
+            <span class="choice__name">{o.name}</span>
+            <span class="choice__effect">{o.effect}</span>
+          </span>
+        </label>
+      ))}
+    </fieldset>
+  );
+}
+
+export function Toggle({ checked, name, effect, onChange }: {
+  checked: boolean;
+  name: string;
+  effect: string;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label class="choice">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={e => onChange((e.currentTarget as HTMLInputElement).checked)}
+      />
+      <span class="choice__text">
+        <span class="choice__name">{name}</span>
+        <span class="choice__effect">{effect}</span>
+      </span>
+    </label>
+  );
+}
+
+/** Chips over a comma-separated string. The string stays the source of truth
+ *  so handleProfileNext's split(',') parse remains the single authority on
+ *  what gets stored. */
+export function DomainChips({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const [draft, setDraft] = useState('');
+  const chips = parseDomains(value);
+
+  function commit(raw: string): void {
+    setDraft('');
+    onChange(commitChips(value, raw));
+  }
+
+  return (
+    <div class="chips">
+      {chips.map(c => (
+        <span key={c} class="chip">
+          {c}
+          <button
+            type="button"
+            class="chip__remove"
+            aria-label={`Remove ${c}`}
+            onClick={() => onChange(formatDomains(chips.filter(x => x !== c)))}
+          >
+            ×
+          </button>
+        </span>
+      ))}
+      <input
+        class="chips__input"
+        value={draft}
+        placeholder={chips.length === 0 ? 'finance, medicine' : ''}
+        aria-label="Add an expertise domain"
+        onInput={e => {
+          const v = (e.currentTarget as HTMLInputElement).value;
+          if (v.includes(',')) commit(v); else setDraft(v);
+        }}
+        onKeyDown={e => {
+          if (e.key === 'Enter') { e.preventDefault(); commit(draft); }
+          if (e.key === 'Backspace' && draft === '' && chips.length > 0) {
+            onChange(formatDomains(chips.slice(0, -1)));
+          }
+        }}
+        onBlur={() => commit(draft)}
+      />
+    </div>
+  );
+}
+
+/** Applies the REAL profile->theme mapping from src/core/theme.ts, so what
+ *  this shows is what the extension will actually do — not an illustration
+ *  of it. */
+export function ProfilePreview({ profile }: { profile: PersonaProfile }) {
+  const vars = themeToCssVars(profileToTheme(profile));
+  return (
+    <div class="preview">
+      <p class="preview__caption">Preview — the real mapping from src/core/theme.ts</p>
+      <div class="preview__surface" style={vars}>
+        <h4>Genoa's port doubles container traffic</h4>
+        <p>The terminal handled 2.4 million containers last year, up from 1.2 million.</p>
+      </div>
+    </div>
+  );
+}
+
+const LANGUAGES = [
+  { code: 'en', name: 'English' },
+  { code: 'it', name: 'Italiano' },
+  { code: 'es', name: 'Español' },
+  { code: 'fr', name: 'Français' },
+  { code: 'de', name: 'Deutsch' },
+  { code: 'pt', name: 'Português' }
+];
+
+export function ProfileForm({ profile, domainsInput, onProfileChange, onDomainsChange, onSubmit, busy }: {
+  profile: PersonaProfile;
+  domainsInput: string;
+  onProfileChange: (profile: PersonaProfile) => void;
+  onDomainsChange: (value: string) => void;
+  onSubmit: (e: Event) => void;
+  busy: boolean;
+}) {
+  // Derived from the profile itself on every render, not a separately-seeded
+  // local flag: a language that doesn't match any preset (including '',
+  // e.g. right after clearing the custom box) IS the custom case, so this
+  // can never drift from what the value actually is - not on remount (the
+  // old useState seed only ran once, so navigating away and back with a
+  // blank custom language silently forgot it was custom), and not while
+  // typing.
+  const known = LANGUAGES.some(l => l.code === profile.language);
+  const custom = !known;
+
+  function setAccessibility(key: keyof PersonaProfile['accessibility'], value: boolean): void {
+    onProfileChange({ ...profile, accessibility: { ...profile.accessibility, [key]: value } });
+  }
+
+  return (
+    <form onSubmit={onSubmit}>
+      <ProfilePreview profile={profile} />
+
+      <div class="field">
+        <label class="field__label" for="language-select">Language</label>
+        <span class="field__hint">Pages get rewritten into this language.</span>
+        <select
+          id="language-select"
+          class="select"
+          value={custom ? 'other' : profile.language}
+          onChange={e => {
+            const v = (e.currentTarget as HTMLSelectElement).value;
+            // Blanks the language rather than leaving the previous preset
+            // code in place - the custom box below is derived from this
+            // value, so it now opens empty instead of pre-filled.
+            onProfileChange({ ...profile, language: v === 'other' ? '' : v });
+          }}
+        >
+          {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.name} · {l.code}</option>)}
+          <option value="other">Other…</option>
+        </select>
+        {custom && (
+          <input
+            class="input field__custom"
+            value={profile.language}
+            aria-label="BCP-47 language tag"
+            placeholder="BCP-47 tag, e.g. nl-BE"
+            onInput={e => onProfileChange({ ...profile, language: (e.currentTarget as HTMLInputElement).value })}
+          />
+        )}
+      </div>
+
+      <ChoiceGroup
+        legend="Reading level"
+        value={profile.readingLevel}
+        onChange={v => onProfileChange({ ...profile, readingLevel: v })}
+        options={[
+          { value: 'simple', name: 'Simple', effect: 'Short sentences, everyday words, jargon explained.' },
+          { value: 'standard', name: 'Standard', effect: 'Left roughly as written.' },
+          { value: 'expert', name: 'Expert', effect: 'Keeps technical terms and detail, drops the explanations.' }
+        ]}
+      />
+
+      <ChoiceGroup
+        legend="Tone"
+        value={profile.tone}
+        onChange={v => onProfileChange({ ...profile, tone: v })}
+        options={[
+          { value: 'plain', name: 'Plain', effect: 'Direct and unadorned.' },
+          { value: 'neutral', name: 'Neutral', effect: 'Matches the source.' },
+          { value: 'technical', name: 'Technical', effect: 'Precise, assumes domain fluency.' }
+        ]}
+      />
+
+      <fieldset class="choices">
+        <legend class="choices__legend">Accessibility</legend>
+        <Toggle
+          checked={profile.accessibility.dyslexiaFriendly}
+          name="Dyslexia-friendly type"
+          effect="Wider letterforms and 1.8 line spacing."
+          onChange={v => setAccessibility('dyslexiaFriendly', v)}
+        />
+        <Toggle
+          checked={profile.accessibility.highContrast}
+          name="High contrast"
+          effect="Pure black on white."
+          onChange={v => setAccessibility('highContrast', v)}
+        />
+        <Toggle
+          checked={profile.accessibility.largeText}
+          name="Larger text"
+          effect="Scales all text up 35%."
+          onChange={v => setAccessibility('largeText', v)}
+        />
+        <Toggle
+          checked={profile.accessibility.reduceClutter}
+          name="Less clutter"
+          effect="More room between blocks; promos and secondary nav are dropped."
+          onChange={v => setAccessibility('reduceClutter', v)}
+        />
+      </fieldset>
+
+      <div class="field">
+        <span class="field__label">Expertise domains</span>
+        <span class="field__hint">Subjects you already know well, so they are not over-explained. Optional.</span>
+        <DomainChips value={domainsInput} onChange={onDomainsChange} />
+      </div>
+
+      <button type="submit" class="btn" disabled={busy}>Continue</button>
+    </form>
+  );
+}
+
+/** The end state, and the thing to put on screen during a demo: both records,
+ *  both transactions, and a link to the public ENS page that now serves them.
+ *  docs/DEMO-SCRIPT.md opens that page by hand today. */
+export function Summary({ ensName, recordKeys, attestation, profileUri, humanTxHash, profileTxHash }: {
+  ensName: string;
+  recordKeys: { profile: string; human: string };
+  attestation: string | null;
+  profileUri: string | null;
+  humanTxHash: string;
+  profileTxHash: string;
+}) {
+  return (
+    <section class="card" data-step="done">
+      <p class="summary__done">Profile published to {ensName}.</p>
+      <h2 class="card__title">Two public records, no public profile</h2>
+      <p class="card__why">
+        Anyone can read both records. Neither reveals what is in your profile:
+        one is a uniqueness proof, the other a pointer to ciphertext.
+      </p>
+
+      {attestation && <Artifact label={recordKeys.human} value={attestation} />}
+      {profileUri && <Artifact label={recordKeys.profile} value={profileUri} />}
+      <Artifact label="Human tx" value={humanTxHash} href={`https://sepolia.etherscan.io/tx/${humanTxHash}`} />
+      <Artifact label="Profile tx" value={profileTxHash} href={`https://sepolia.etherscan.io/tx/${profileTxHash}`} />
+
+      <ul class="summary__links" role="list">
+        <li>
+          <a href={`https://sepolia.app.ens.domains/${ensName}`} target="_blank" rel="noreferrer">
+            See both records on the public ENS page
+          </a>
+        </li>
+      </ul>
+    </section>
+  );
 }

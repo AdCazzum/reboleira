@@ -95,6 +95,11 @@ to show it's not a one-page trick.)*
 **Optional:** switch to the pre-opened `sepolia.app.ens.domains/reboleira.eth`
 tab and show the two text records live in the resolver.
 
+> Since the onboarding redesign, the wizard's own completion screen lists both
+> records with their keys, both Etherscan links, and a link straight to the
+> public ENS page — so if you have just run step 5 live, you can show it from
+> there instead of switching tabs.
+
 ---
 
 ## 5. Onboarding, optional beat (30s, only if time and network allow)

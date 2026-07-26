@@ -115,8 +115,8 @@ import { attestationFromProof } from '../src/services/world-id';
 import { createZeroGStorageBackend, storeProfile } from '../src/services/zerog-storage';
 import type { ZeroGStorageSdkLoader } from '../src/services/zerog-storage';
 import type { PersonaProfile } from '../src/core/types';
-import { SEPOLIA_CHAIN_HEX, ZEROG_CHAIN_HEX } from './onboarding-logic';
-import { MastheadMeta, Stepper, StepCard, Artifact, LogPanel, ErrorBlock, ProfileForm, Summary, ReadOnlyNote } from './onboarding-ui';
+import { SEPOLIA_CHAIN_HEX, ZEROG_CHAIN_HEX, preflightIssues, type PreflightIssue } from './onboarding-logic';
+import { MastheadMeta, Stepper, StepCard, Artifact, LogPanel, ErrorBlock, ProfileForm, Summary, ReadOnlyNote, PreflightStrip } from './onboarding-ui';
 
 // Narrows IDKitResult's response item union down to the variants that carry
 // `.nullifier` (V3/V4 uniqueness proofs), excluding the session variant
@@ -191,7 +191,35 @@ function App() {
   const [log, setLog] = useState<string[]>([
     'Ready. Click "Connect wallet" to begin (requires MetaMask, served over http://localhost).'
   ]);
-  const [errors, setErrors] = useState<Record<StepNum, string | null>>({ 1: null, 2: null, 3: null, 4: null, 5: null });
+  const [errors, setErrors] = useState<Record<StepNum, unknown>>({ 1: null, 2: null, 3: null, 4: null, 5: null });
+
+  const [preflight, setPreflight] = useState<PreflightIssue[]>([]);
+
+  // Probes the setup once, before anything is clicked. The signer check is a
+  // bare OPTIONS: scripts/onboarding-server.mjs answers it 204 without signing
+  // anything, so this costs a round trip and has no side effects — whereas a
+  // POST would mint an rp_context nobody uses.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      let rpContextOk = false;
+      try {
+        const res = await fetch('/rp-context', { method: 'OPTIONS' });
+        rpContextOk = res.status === 204;
+      } catch {
+        rpContextOk = false;
+      }
+      if (cancelled) return;
+      setPreflight(preflightIssues({
+        hasEthereum: Boolean((window as any).ethereum),
+        rpContextOk,
+        ensName: CONFIG.ensName,
+        worldAppId: CONFIG.worldAppId,
+        worldAction: CONFIG.worldAction
+      }));
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Live ethers handles - held in refs (not state: they are not meant to
   // trigger re-renders, and ethers Provider/Signer instances are not usefully
@@ -243,14 +271,14 @@ function App() {
     setLog(l => [...l, line]);
   }
 
-  function logError(context: string, err: unknown): string {
+  function logError(context: string, err: unknown): unknown {
     const message = err instanceof Error ? err.message : String(err);
     appendLog(`ERROR (${context}): ${message}`);
-    return message;
+    return err;
   }
 
-  function setError(n: StepNum, message: string | null): void {
-    setErrors(e => ({ ...e, [n]: message }));
+  function setError(n: StepNum, error: unknown): void {
+    setErrors(e => ({ ...e, [n]: error }));
   }
 
   async function refreshSigner(): Promise<JsonRpcSigner> {
@@ -337,12 +365,6 @@ function App() {
   }
 
   // ---- Step 3: Profile form ----
-  function updateProfile<K extends keyof PersonaProfile>(key: K, value: PersonaProfile[K]): void {
-    setProfile(p => ({ ...p, [key]: value }));
-  }
-  function updateAccessibility(key: keyof PersonaProfile['accessibility'], value: boolean): void {
-    setProfile(p => ({ ...p, accessibility: { ...p.accessibility, [key]: value } }));
-  }
   function handleProfileNext(e: Event): void {
     e.preventDefault();
     setError(3, null);
@@ -464,7 +486,15 @@ function App() {
 
   return (
     <>
-      <Stepper steps={STEPS} current={step} furthest={furthest} busy={busy} onSelect={n => setStep(n as StepNum)} />
+      <PreflightStrip issues={preflight} />
+      <Stepper
+        steps={STEPS}
+        current={step}
+        furthest={furthest}
+        busy={busy}
+        finalDone={Boolean(humanTxHash && profileTxHash)}
+        onSelect={n => setStep(n as StepNum)}
+      />
 
       {step === 1 && (
         <StepCard n={1} busy={busy} title="Connect your wallet"
@@ -513,14 +543,18 @@ function App() {
       {step === 3 && (
         <StepCard n={3} busy={busy} title="Describe how you read"
           why="These choices are what the AI adapts every page to. They are encrypted before they leave this page.">
-          <ProfileForm
-            profile={profile}
-            domainsInput={domainsInput}
-            onProfileChange={setProfile}
-            onDomainsChange={setDomainsInput}
-            onSubmit={handleProfileNext}
-            busy={busy}
-          />
+          {profileUri ? (
+            <ReadOnlyNote furthest={furthest} />
+          ) : (
+            <ProfileForm
+              profile={profile}
+              domainsInput={domainsInput}
+              onProfileChange={setProfile}
+              onDomainsChange={setDomainsInput}
+              onSubmit={handleProfileNext}
+              busy={busy}
+            />
+          )}
           <ErrorBlock error={errors[3]} onRetry={null} />
         </StepCard>
       )}

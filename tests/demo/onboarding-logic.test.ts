@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   SEPOLIA_CHAIN_HEX, ZEROG_CHAIN_HEX, chainLabel, shortenMiddle,
-  parseDomains, formatDomains, guidanceFor, preflightIssues
+  parseDomains, formatDomains, commitChips, guidanceFor, preflightIssues
 } from '../../demo/onboarding-logic';
 
 describe('chainLabel', () => {
@@ -31,6 +31,25 @@ describe('shortenMiddle', () => {
     expect(short).toBe('0xaaaaaaaa…aaaaaaaa');
     expect(short.length).toBeLessThan(hash.length);
   });
+  // Artifact (onboarding-ui.tsx) always calls shortenMiddle(value) with no
+  // explicit lengths - the defaults are the only behaviour it ever exercises
+  // in the running app, so they get their own coverage rather than relying
+  // on the explicit-args case above to stand in for them.
+  it('defaults to head=10, tail=8 - the only way Artifact actually calls it', () => {
+    const hash = '0x' + 'b'.repeat(64);
+    expect(shortenMiddle(hash)).toBe(shortenMiddle(hash, 10, 8));
+    expect(shortenMiddle(hash)).toBe('0xbbbbbbbb…bbbbbbbb');
+  });
+  it('sits exactly on the head+tail+1 boundary and leaves it alone', () => {
+    const value = 'a'.repeat(10 + 8 + 1); // 19 chars, the <= boundary
+    expect(shortenMiddle(value)).toBe(value);
+  });
+  it('elides one character past the boundary', () => {
+    const value = 'a'.repeat(10 + 8 + 2); // 20 chars, one over the boundary
+    const short = shortenMiddle(value);
+    expect(short).toBe(`${'a'.repeat(10)}…${'a'.repeat(8)}`);
+    expect(short.length).toBeLessThan(value.length);
+  });
 });
 
 describe('domain chips', () => {
@@ -43,6 +62,29 @@ describe('domain chips', () => {
   it('round-trips chips back into the comma string the form stores', () => {
     const chips = ['finance', 'medicine'];
     expect(parseDomains(formatDomains(chips))).toEqual(chips);
+  });
+});
+
+describe('commitChips', () => {
+  // The actual bug this branch shipped: DomainChips.commit() used to dedup
+  // the new chips against the existing ones but not against each other, so
+  // committing "a,a" in one go (a paste, or typing a comma-separated pair)
+  // stored "a, a" - two chips sharing a React key.
+  it('dedups within a single commit - "a,a" in one go yields one chip', () => {
+    expect(commitChips('', 'a,a')).toBe('a');
+  });
+  it('dedups the new chips against the pre-existing ones', () => {
+    expect(commitChips('finance', 'finance, medicine')).toBe('finance, medicine');
+  });
+  it('preserves insertion order: existing chips first, then new ones in the order they appeared', () => {
+    expect(commitChips('finance, medicine', 'law, medicine, art')).toBe('finance, medicine, law, art');
+  });
+  it('trims whitespace around each chip', () => {
+    expect(commitChips('', '  finance ,  medicine  ')).toBe('finance, medicine');
+  });
+  it('is a no-op on the stored value for an empty or comma-only commit', () => {
+    expect(commitChips('finance, medicine', '')).toBe('finance, medicine');
+    expect(commitChips('finance, medicine', ' ,, ')).toBe('finance, medicine');
   });
 });
 
@@ -59,6 +101,12 @@ describe('guidanceFor', () => {
   });
   it('points at the runbook when the wallet has no testnet funds', () => {
     expect(guidanceFor({ code: 'INSUFFICIENT_FUNDS' })).toMatch(/docs\/RUNBOOK\.md/);
+  });
+  it('points at installing/enabling MetaMask when window.ethereum is missing', () => {
+    const err = new Error(
+      'window.ethereum not found - install/enable MetaMask and reload this page over http://localhost'
+    );
+    expect(guidanceFor(err)).toMatch(/Install or enable MetaMask/);
   });
   it('offers no guidance rather than a guess for unknown errors', () => {
     expect(guidanceFor(new Error('something entirely new'))).toBeNull();

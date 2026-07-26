@@ -56,10 +56,13 @@ demo/
   personas/persona-a.json, persona-b.json # two example profiles
   fixtures/uispec-<page>-<persona>.json    # pre-computed UISpecs (offline fallback)
   onboarding.html, onboarding.tsx          # localhost onboarding wizard: connect -> World ID -> form -> encrypt -> 0G -> ENS
+  onboarding-ui.tsx, onboarding.css        # its presentation layer (CSS is linked from the HTML, never imported)
+  onboarding-logic.ts                      # its pure helpers — chain labels, error guidance, preflight (unit-tested)
   wallet-test.html, wallet-test.ts         # standalone MetaMask-bridge harness
 scripts/
   onboarding-server.mjs         # serves demo/ + signs the World ID rp_context (RP key never reaches the browser)
   build-onboarding.mjs, build-wallet-test.mjs  # bundlers for the two localhost harnesses above
+  preview-onboarding.mjs        # renders the wizard in Chromium with a stubbed wallet and screenshots each step
   setup-ledger.ts                # one-time 0G Compute ledger funding
   try-inference.ts, try-storage.ts, try-ens.ts  # live smoke tests, one per sponsor SDK
   dump-graph.ts                  # prints a mock page's real refIds (for re-authoring fixtures)

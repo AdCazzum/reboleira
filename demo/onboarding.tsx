@@ -95,9 +95,16 @@
 // IDKitRequestWidget smoke build bundled cleanly under that alias (WASM
 // chunk included, ~869 KB), with no unresolved react/react-dom imports.
 // ---------------------------------------------------------------------------
+// UI layer: this file owns the flow (the five handlers and their state) and
+// nothing else. Presentation lives in demo/onboarding-ui.tsx, pure helpers in
+// demo/onboarding-logic.ts, and styling in demo/onboarding.css — which is
+// linked from onboarding.html rather than imported here, because
+// scripts/build-onboarding.mjs pins a single `onboarding.js` output and would
+// emit an imported stylesheet as an unreferenced hashed asset.
+// ---------------------------------------------------------------------------
 
 import { render } from 'preact';
-import { useState, useRef } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import { ethers } from 'ethers';
 import type { BrowserProvider, JsonRpcSigner } from 'ethers';
 import { IDKitRequestWidget, orbLegacy, IDKitErrorCodes } from '@worldcoin/idkit';
@@ -108,6 +115,8 @@ import { attestationFromProof } from '../src/services/world-id';
 import { createZeroGStorageBackend, storeProfile } from '../src/services/zerog-storage';
 import type { ZeroGStorageSdkLoader } from '../src/services/zerog-storage';
 import type { PersonaProfile } from '../src/core/types';
+import { SEPOLIA_CHAIN_HEX, ZEROG_CHAIN_HEX, preflightIssues, type PreflightIssue } from './onboarding-logic';
+import { MastheadMeta, Stepper, StepCard, Artifact, LogPanel, ErrorBlock, ProfileForm, Summary, ReadOnlyNote, PreflightStrip } from './onboarding-ui';
 
 // Narrows IDKitResult's response item union down to the variants that carry
 // `.nullifier` (V3/V4 uniqueness proofs), excluding the session variant
@@ -122,16 +131,12 @@ function extractNullifier(result: IDKitResult): string {
 
 type StepNum = 1 | 2 | 3 | 4 | 5;
 const STEPS: { n: StepNum; label: string }[] = [
-  { n: 1, label: 'Connect' },
-  { n: 2, label: 'Verify human' },
+  { n: 1, label: 'Wallet' },
+  { n: 2, label: 'Human' },
   { n: 3, label: 'Profile' },
-  { n: 4, label: 'Encrypt & upload' },
-  { n: 5, label: 'Write ENS' }
+  { n: 4, label: 'Encrypt' },
+  { n: 5, label: 'ENS' }
 ];
-
-// CONFIG.zerogChainId (16602) as 0x-hex; Sepolia's well-known chainId (11155111).
-const ZEROG_CHAIN_HEX = '0x40DA';
-const SEPOLIA_CHAIN_HEX = '0xAA36A7';
 
 async function switchChain(chainIdHex: string, addParams?: Record<string, unknown>): Promise<void> {
   const eth = (window as any).ethereum;
@@ -170,39 +175,51 @@ function emptyProfile(): PersonaProfile {
   };
 }
 
-function Stepper({ step }: { step: StepNum }) {
-  return (
-    <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-      {STEPS.map(s => (
-        <div
-          key={s.n}
-          style={{
-            padding: '4px 10px',
-            borderRadius: 4,
-            fontSize: 13,
-            background: s.n === step ? '#111' : s.n < step ? '#137333' : '#eee',
-            color: s.n === step || s.n < step ? '#fff' : '#333'
-          }}
-        >
-          {s.n}. {s.label}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ErrorBox({ message }: { message: string | null }) {
-  if (!message) return null;
-  return <p style={{ color: '#a50e0e', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>Error: {message}</p>;
-}
-
 function App() {
   const [step, setStep] = useState<StepNum>(1);
+  const [furthest, setFurthest] = useState<StepNum>(1);
+  const [chainId, setChainId] = useState<string | null>(null);
+
+  // Forward movement always goes through here so `furthest` can never fall
+  // behind `step` — the stepper uses it to decide which steps are reachable.
+  function advance(n: StepNum): void {
+    setStep(n);
+    setFurthest(f => (n > f ? n : f));
+  }
+
   const [busy, setBusy] = useState(false);
   const [log, setLog] = useState<string[]>([
     'Ready. Click "Connect wallet" to begin (requires MetaMask, served over http://localhost).'
   ]);
-  const [errors, setErrors] = useState<Record<StepNum, string | null>>({ 1: null, 2: null, 3: null, 4: null, 5: null });
+  const [errors, setErrors] = useState<Record<StepNum, unknown>>({ 1: null, 2: null, 3: null, 4: null, 5: null });
+
+  const [preflight, setPreflight] = useState<PreflightIssue[]>([]);
+
+  // Probes the setup once, before anything is clicked. The signer check is a
+  // bare OPTIONS: scripts/onboarding-server.mjs answers it 204 without signing
+  // anything, so this costs a round trip and has no side effects — whereas a
+  // POST would mint an rp_context nobody uses.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      let rpContextOk = false;
+      try {
+        const res = await fetch('/rp-context', { method: 'OPTIONS' });
+        rpContextOk = res.status === 204;
+      } catch {
+        rpContextOk = false;
+      }
+      if (cancelled) return;
+      setPreflight(preflightIssues({
+        hasEthereum: Boolean((window as any).ethereum),
+        rpContextOk,
+        ensName: CONFIG.ensName,
+        worldAppId: CONFIG.worldAppId,
+        worldAction: CONFIG.worldAction
+      }));
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Live ethers handles - held in refs (not state: they are not meant to
   // trigger re-renders, and ethers Provider/Signer instances are not usefully
@@ -224,18 +241,44 @@ function App() {
   const [humanTxHash, setHumanTxHash] = useState<string | null>(null);
   const [profileTxHash, setProfileTxHash] = useState<string | null>(null);
 
+  // Keeps the network badge honest. The wizard switches chains twice
+  // (0G Galileo for the upload, back to Sepolia for the ENS write), and
+  // MetaMask can also be switched by hand mid-run.
+  useEffect(() => {
+    const eth = (window as any).ethereum;
+    if (!eth) return;
+    const read = () => eth.request({ method: 'eth_chainId' }).then(setChainId).catch(() => {});
+    const onChanged = (id: string) => setChainId(id);
+    read();
+    eth.on?.('chainChanged', onChanged);
+    return () => eth.removeListener?.('chainChanged', onChanged);
+  }, [address]);
+
+  // Lets scripts/preview-onboarding.mjs reach a step that would otherwise need
+  // the World ID simulator. Test seam only — nothing in the flow calls it.
+  useEffect(() => {
+    (window as any).__ensightGoToStep = (n: StepNum) => advance(n);
+  }, []);
+
+  // Renders the masthead metadata into the static header (demo/onboarding.html
+  // provides #masthead-meta) since that markup lives outside the #app mount.
+  useEffect(() => {
+    const slot = document.getElementById('masthead-meta');
+    if (slot) render(<MastheadMeta ensName={CONFIG.ensName} chainId={chainId} address={address} />, slot);
+  }, [chainId, address]);
+
   function appendLog(line: string): void {
     setLog(l => [...l, line]);
   }
 
-  function logError(context: string, err: unknown): string {
+  function logError(context: string, err: unknown): unknown {
     const message = err instanceof Error ? err.message : String(err);
     appendLog(`ERROR (${context}): ${message}`);
-    return message;
+    return err;
   }
 
-  function setError(n: StepNum, message: string | null): void {
-    setErrors(e => ({ ...e, [n]: message }));
+  function setError(n: StepNum, error: unknown): void {
+    setErrors(e => ({ ...e, [n]: error }));
   }
 
   async function refreshSigner(): Promise<JsonRpcSigner> {
@@ -263,7 +306,7 @@ function App() {
       const addr = await signer.getAddress();
       setAddress(addr);
       appendLog(`Connected: ${addr}`);
-      setStep(2);
+      advance(2);
     } catch (err) {
       setError(1, logError('connect', err));
     } finally {
@@ -310,7 +353,7 @@ function App() {
       appendLog(`World ID protocol_version=${result.protocol_version}, nullifier=${nullifier}`);
       appendLog(`Attestation: ${att}`);
       setWorldOpen(false);
-      setStep(3);
+      advance(3);
     } catch (err) {
       setError(2, logError('verify', err));
     }
@@ -322,12 +365,6 @@ function App() {
   }
 
   // ---- Step 3: Profile form ----
-  function updateProfile<K extends keyof PersonaProfile>(key: K, value: PersonaProfile[K]): void {
-    setProfile(p => ({ ...p, [key]: value }));
-  }
-  function updateAccessibility(key: keyof PersonaProfile['accessibility'], value: boolean): void {
-    setProfile(p => ({ ...p, accessibility: { ...p.accessibility, [key]: value } }));
-  }
   function handleProfileNext(e: Event): void {
     e.preventDefault();
     setError(3, null);
@@ -339,7 +376,7 @@ function App() {
     const finalProfile: PersonaProfile = { ...profile, expertiseDomains: domains };
     setProfile(finalProfile);
     appendLog(`Profile: ${JSON.stringify(finalProfile)}`);
-    setStep(4);
+    advance(4);
   }
 
   // ---- Step 4: Encrypt & upload to 0G Storage ----
@@ -374,7 +411,7 @@ function App() {
       const uri = await storeProfile(profile, key, backend);
       setProfileUri(uri);
       appendLog(`0G Storage root hash (uri): ${uri}`);
-      setStep(5);
+      advance(5);
     } catch (err) {
       setError(4, logError('encrypt/upload', err));
     } finally {
@@ -437,38 +474,53 @@ function App() {
     }
   }
 
+  // Back navigation is read-only: a step behind `furthest` only shows what it
+  // already produced and re-runs nothing (see the plan's "Back navigation"
+  // section). `furthest` never exceeds the current step's own number until
+  // that step's advance() fires, so this is always false for the furthest
+  // step itself - in particular, step 5 stays interactive for as long as it
+  // is the furthest step, which is exactly the case (humanTxHash set,
+  // profileTxHash still null) where the retry guard in handleWriteEns must
+  // still be reachable from a real button click.
+  const readOnly = step < furthest;
+
   return (
-    <div style={{ fontFamily: 'system-ui, sans-serif' }}>
-      <Stepper step={step} />
+    <>
+      <PreflightStrip issues={preflight} />
+      <Stepper
+        steps={STEPS}
+        current={step}
+        furthest={furthest}
+        busy={busy}
+        finalDone={Boolean(humanTxHash && profileTxHash)}
+        onSelect={n => setStep(n as StepNum)}
+      />
 
       {step === 1 && (
-        <section>
-          <h2>1. Connect wallet</h2>
-          <p>
-            ENS name to configure: <code>{CONFIG.ensName || '(VITE_ENS_NAME not set in .env)'}</code>
-          </p>
-          <button onClick={handleConnect} disabled={busy}>
-            {busy ? 'Connecting...' : 'Connect wallet'}
-          </button>
-          {address && <p>Connected address: <code>{address}</code></p>}
-          <ErrorBox message={errors[1]} />
-        </section>
+        <StepCard n={1} busy={busy} title="Connect your wallet"
+          why="The same wallet signs the key that encrypts your profile and, at the end, the two ENS records that point at it.">
+          {readOnly ? (
+            <ReadOnlyNote furthest={furthest} />
+          ) : (
+            <button class="btn" onClick={handleConnect} disabled={busy}>
+              {busy ? 'Connecting…' : 'Connect wallet'}
+            </button>
+          )}
+          {address && <Artifact label="Address" value={address} />}
+          <ErrorBlock error={errors[1]} onRetry={handleConnect} />
+        </StepCard>
       )}
 
       {step === 2 && (
-        <section>
-          <h2>2. Verify human</h2>
-          <p style={{ fontSize: 13, color: '#555' }}>
-            World ID 4.0 staging (simulator) - <code>@worldcoin/idkit@4.2.1</code>,{' '}
-            <code>IDKitRequestWidget</code>. rp_context is fetched from{' '}
-            <code>POST /rp-context</code>, signed by the local dev server (
-            <code>node scripts/onboarding-server.mjs</code> - must be running; see the header comment in this
-            file for why signing cannot happen in this browser bundle). Opens the real widget; use the World App
-            simulator (Developer Portal, staging app) to complete verification without a physical Orb.
-          </p>
-          <button onClick={openWorldWidget} disabled={busy || worldOpen}>
-            Verify with World ID
-          </button>
+        <StepCard n={2} busy={busy} title="Prove you are a person"
+          why="One World ID proof, so a profile belongs to one human. No personal data leaves your device — only a nullifier, which cannot be traced back to you.">
+          {readOnly ? (
+            <ReadOnlyNote furthest={furthest} />
+          ) : (
+            <button class="btn" onClick={openWorldWidget} disabled={busy || worldOpen}>
+              Verify with World ID
+            </button>
+          )}
           {rpContext && (
             <IDKitRequestWidget
               open={worldOpen}
@@ -483,136 +535,74 @@ function App() {
               onError={handleWorldError}
             />
           )}
-          {attestation && <p>Attestation: <code>{attestation}</code></p>}
-          <ErrorBox message={errors[2]} />
-        </section>
+          {attestation && <Artifact label="Attestation" value={attestation} />}
+          <ErrorBlock error={errors[2]} onRetry={openWorldWidget} />
+        </StepCard>
       )}
 
       {step === 3 && (
-        <section>
-          <h2>3. Profile</h2>
-          <form onSubmit={handleProfileNext}>
-            <label style={{ display: 'block', marginTop: 8 }}>
-              Language (BCP-47)
-              <input
-                value={profile.language}
-                onInput={e => updateProfile('language', (e.currentTarget as HTMLInputElement).value)}
-                style={{ display: 'block', width: '100%', boxSizing: 'border-box' }}
-              />
-            </label>
-            <label style={{ display: 'block', marginTop: 8 }}>
-              Reading level
-              <select
-                value={profile.readingLevel}
-                onChange={e => updateProfile('readingLevel', (e.currentTarget as HTMLSelectElement).value as PersonaProfile['readingLevel'])}
-                style={{ display: 'block', width: '100%' }}
-              >
-                <option value="simple">simple</option>
-                <option value="standard">standard</option>
-                <option value="expert">expert</option>
-              </select>
-            </label>
-            <label style={{ display: 'block', marginTop: 8 }}>
-              Tone
-              <select
-                value={profile.tone}
-                onChange={e => updateProfile('tone', (e.currentTarget as HTMLSelectElement).value as PersonaProfile['tone'])}
-                style={{ display: 'block', width: '100%' }}
-              >
-                <option value="plain">plain</option>
-                <option value="neutral">neutral</option>
-                <option value="technical">technical</option>
-              </select>
-            </label>
-            <fieldset style={{ marginTop: 8 }}>
-              <legend>Accessibility</legend>
-              {(['dyslexiaFriendly', 'highContrast', 'largeText', 'reduceClutter'] as const).map(k => (
-                <label key={k} style={{ display: 'block' }}>
-                  <input
-                    type="checkbox"
-                    checked={profile.accessibility[k]}
-                    onChange={e => updateAccessibility(k, (e.currentTarget as HTMLInputElement).checked)}
-                  />{' '}
-                  {k}
-                </label>
-              ))}
-            </fieldset>
-            <label style={{ display: 'block', marginTop: 8 }}>
-              Expertise domains (comma-separated)
-              <input
-                value={domainsInput}
-                onInput={e => setDomainsInput((e.currentTarget as HTMLInputElement).value)}
-                placeholder="finance, medicine"
-                style={{ display: 'block', width: '100%', boxSizing: 'border-box' }}
-              />
-            </label>
-            <div style={{ marginTop: 12 }}>
-              <button type="submit" disabled={busy}>Next</button>
-            </div>
-          </form>
-          <ErrorBox message={errors[3]} />
-        </section>
+        <StepCard n={3} busy={busy} title="Describe how you read"
+          why="These choices are what the AI adapts every page to. They are encrypted before they leave this page.">
+          {profileUri ? (
+            <ReadOnlyNote furthest={furthest} />
+          ) : (
+            <ProfileForm
+              profile={profile}
+              domainsInput={domainsInput}
+              onProfileChange={setProfile}
+              onDomainsChange={setDomainsInput}
+              onSubmit={handleProfileNext}
+              busy={busy}
+            />
+          )}
+          <ErrorBlock error={errors[3]} onRetry={null} />
+        </StepCard>
       )}
 
       {step === 4 && (
-        <section>
-          <h2>4. Encrypt & upload to 0G Storage</h2>
-          <p>
-            Signs <code>SIGN_MESSAGE</code>, derives an AES-GCM key, encrypts the profile, and uploads it to
-            0G Storage. This sends a transaction on 0G Galileo (chainId {CONFIG.zerogChainId}), so MetaMask
-            will be switched to that network first (added automatically if unknown).
-          </p>
-          <button onClick={handleEncryptUpload} disabled={busy}>
-            {busy ? 'Working...' : 'Encrypt & upload'}
-          </button>
-          {profileUri && <p>0G Storage uri (root hash): <code>{profileUri}</code></p>}
-          <ErrorBox message={errors[4]} />
-        </section>
+        <StepCard n={4} busy={busy} title="Encrypt and upload"
+          why={<>Your wallet signs a fixed message; that signature derives an AES-GCM key that never leaves this page. Only the ciphertext goes to 0G Storage. MetaMask will switch to 0G Galileo (chain {CONFIG.zerogChainId}) first.</>}>
+          {readOnly ? (
+            <ReadOnlyNote furthest={furthest} />
+          ) : (
+            <button class="btn" onClick={handleEncryptUpload} disabled={busy}>
+              {busy ? 'Working…' : 'Encrypt & upload'}
+            </button>
+          )}
+          {profileUri && <Artifact label="0G root hash" value={profileUri} />}
+          <ErrorBlock error={errors[4]} onRetry={handleEncryptUpload} />
+        </StepCard>
       )}
 
-      {step === 5 && (
-        <section>
-          <h2>5. Write ENS</h2>
-          <p>
-            Switches MetaMask back to Sepolia, then writes both text records on <code>{CONFIG.ensName}</code>{' '}
-            via <code>setText</code>: <code>{CONFIG.recordKeys.human}</code> = attestation,{' '}
-            <code>{CONFIG.recordKeys.profile}</code> = 0G uri.
-          </p>
-          <button onClick={handleWriteEns} disabled={busy}>
-            {busy ? 'Working...' : 'Write ENS records'}
-          </button>
-          {humanTxHash && (
-            <p>
-              human tx: <a href={`https://sepolia.etherscan.io/tx/${humanTxHash}`} target="_blank" rel="noreferrer">{humanTxHash}</a>
-            </p>
+      {step === 5 && !(humanTxHash && profileTxHash) && (
+        <StepCard n={5} busy={busy} title="Write it to ENS"
+          why={<>Two <code>setText</code> records on {CONFIG.ensName}, back on Sepolia: the attestation and the pointer. Both are public; neither reveals the profile.</>}>
+          {readOnly ? (
+            <ReadOnlyNote furthest={furthest} />
+          ) : (
+            <button class="btn" onClick={handleWriteEns} disabled={busy}>
+              {busy ? 'Working…' : 'Write ENS records'}
+            </button>
           )}
-          {profileTxHash && (
-            <p>
-              profile tx: <a href={`https://sepolia.etherscan.io/tx/${profileTxHash}`} target="_blank" rel="noreferrer">{profileTxHash}</a>
-            </p>
-          )}
-          {humanTxHash && profileTxHash && <p style={{ color: '#137333', fontWeight: 'bold' }}>Onboarding complete.</p>}
-          <ErrorBox message={errors[5]} />
-        </section>
+          {humanTxHash && <Artifact label="Human tx" value={humanTxHash} href={`https://sepolia.etherscan.io/tx/${humanTxHash}`} />}
+          {profileTxHash && <Artifact label="Profile tx" value={profileTxHash} href={`https://sepolia.etherscan.io/tx/${profileTxHash}`} />}
+          <ErrorBlock error={errors[5]} onRetry={handleWriteEns} />
+        </StepCard>
       )}
 
-      <div
-        style={{
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-all',
-          background: '#111',
-          color: '#0f0',
-          padding: '1rem',
-          marginTop: '1rem',
-          minHeight: '6rem',
-          fontFamily: 'ui-monospace, monospace',
-          fontSize: '0.8rem',
-          borderRadius: 4
-        }}
-      >
-        {log.join('\n')}
-      </div>
-    </div>
+      {step === 5 && humanTxHash && profileTxHash && (
+        <Summary
+          ensName={CONFIG.ensName}
+          recordKeys={CONFIG.recordKeys}
+          attestation={attestation}
+          profileUri={profileUri}
+          humanTxHash={humanTxHash}
+          profileTxHash={profileTxHash}
+        />
+      )}
+
+      <LogPanel lines={log} />
+    </>
   );
 }
 
